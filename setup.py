@@ -12,6 +12,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'numpy>=1.12',
     'requests>=2.14',
+    'six>=1.10'
 ]
 
 setup_requirements = [
