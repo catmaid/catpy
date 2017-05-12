@@ -1,1 +1,1 @@
-from catpy.client import CatmaidClient
+from catpy.client import CatmaidClient, CoordinateTransformer

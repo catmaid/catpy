@@ -1,5 +1,7 @@
-import requests
 import json
+
+import requests
+import numpy as np
 
 
 def make_url(base_url, *args):
@@ -25,7 +27,23 @@ class CatmaidClient(object):
     Python object handling authentication, request pooling etc. for requests made to a CATMAID server.
     """
 
-    def __init__(self, base_url, token, auth_name=None, auth_pass=None, project_id):
+    def __init__(self, base_url, token, auth_name=None, auth_pass=None, project_id=None):
+        """
+        Instantiate CatmaidClient object for handling requests to a CATMAID server.
+        
+        Parameters
+        ----------
+        base_url : str
+            URL at which CATMAID server is running
+        token : str
+            API token as assigned by CATMAID server
+        auth_name : str
+            HTTP auth username
+        auth_pass : str
+            HTTP auth password
+        project_id : int
+            (Optional)
+        """
         self.base_url = base_url
 
         self.session = requests.Session()
@@ -162,13 +180,44 @@ class CoordinateTransformer(object):
         translation : dict
             x, y and z the location of the stack's origin (0, 0, 0) in project space
         """
-        self.resolution = resolution if resolution else {dim: 1 for dim in 'xyz'}
-        self.translation = translation if translation else {dim: 0 for dim in 'xyz'}
+        if resolution is None:
+            resolution = dict()
+        if translation is None:
+            translation = dict()
+
+        self.resolution = {dim: resolution.get(dim, 1) for dim in 'xyz'}
+        self.translation = {dim: translation.get(dim, 0) for dim in 'xyz'}
+
+        self._resolution_arrays = dict()
+        self._translation_arrays = dict()
 
     @classmethod
     def from_catmaid(cls, catmaid_client, stack_id):
+        """
+        Return a CoordinateTransformer for a particular CATMAID stack.
+        
+        Parameters
+        ----------
+        catmaid_client : CatmaidClient
+            Authenticated instance of CatmaidClient
+        stack_id : int
+
+        Returns
+        -------
+        CoordinateTransformer
+        """
         stack_info = catmaid_client.get('{}/stack/{}/info'.format(int(catmaid_client.project_id), int(stack_id)))
         return cls(stack_info['resolution'], stack_info['translation'])
+
+    def _get_resolution_array(self, dims):
+        if dims not in self._resolution_arrays:
+            self._resolution_arrays[dims] = np.array([self.resolution[dim] for dim in dims])
+        return self._resolution_arrays[dims]
+
+    def _get_translation_array(self, dims):
+        if dims not in self._resolution_arrays:
+            self._translation_arrays[dims] = np.array([self.translation[dim] for dim in dims])
+        return self._translation_arrays[dims]
 
     def project_to_stack_coord(self, dim, project_coord):
         return (project_coord - self.translation[dim]) / self.resolution[dim]
@@ -189,6 +238,28 @@ class CoordinateTransformer(object):
         """
         return {dim: self.project_to_stack_coord(dim, proj_coord) for dim, proj_coord in project_coords.items()}
 
+    def project_to_stack_array(self, arr, dims='xyz'):
+        """
+        Take an array of points in project space and transform them into stack space.
+        
+        Parameters
+        ----------
+        arr : array-like
+            M by N array containing M coordinates in project space in N dimensions
+        dims : str
+            Order of dimensions in columns, default 'xyz'
+
+        Returns
+        -------
+        np.ndarray
+            M by N array containing M coordinates in stack space in N dimensions
+        """
+        arr = np.array(arr)
+        resolution_arr = self._get_resolution_array(dims)
+        translation_arr = self._get_translation_array(dims)
+
+        return (arr - translation_arr) / resolution_arr
+
     def stack_to_project_coord(self, dim, stack_coord):
         return stack_coord * self.resolution[dim] + self.translation[dim]
 
@@ -207,6 +278,28 @@ class CoordinateTransformer(object):
             coordinates transformed into project/ real space
         """
         return {dim: self.stack_to_project_coord(dim, stack_coord) for dim, stack_coord in stack_coords.items()}
+
+    def stack_to_project_array(self, arr, dims='xyz'):
+        """
+        Take an array of points in stack space and transform them into project space.
+        
+        Parameters
+        ----------
+        arr : array-like
+            M by N array containing M coordinates in stack space in N dimensions
+        dims : array-like or str
+            Order of dimensions in columns, default (x, y, z)
+
+        Returns
+        -------
+        np.ndarray
+            M by N array containing M coordinates in project space in N dimensions
+        """
+        arr = np.array(arr)
+        resolution_arr = self._get_resolution_array(dims)
+        translation_arr = self._get_translation_array(dims)
+
+        return arr * resolution_arr + translation_arr
 
 
 if __name__ == '__main__':
