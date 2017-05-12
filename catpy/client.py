@@ -21,8 +21,9 @@ def make_url(base_url, *args):
     'google.com/mail'
     """
     for arg in args:
+        arg_str = str(arg)
         joiner = '' if base_url.endswith('/') else '/'
-        relative = arg[1:] if arg.startswith('/') else arg
+        relative = arg_str[1:] if arg_str.startswith('/') else arg_str
         base_url = requests.compat.urljoin(base_url + joiner, relative)
 
     return base_url
@@ -102,14 +103,14 @@ class CatmaidClient(object):
             credentials.get('project_id', None) if with_project_id else None
         )
 
-    def get(self, relative_url, params=None, raw=False):
+    def get(self, *relative_url, params=None, raw=False):
         """
         Get data from a running instance of CATMAID.
 
         Parameters
         ----------
-        relative_url: str
-            URL to send the request to, relative to the base_url
+        relative_url
+            URL to send the request to, relative to the base_url. *args will be joined with '/'
         params: dict or str, optional
             JSON-like key/value data to be included in the get URL (defaults to empty)
         raw: bool, optional
@@ -120,16 +121,16 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='GET', data=params, raw=raw)
+        return self.fetch(*relative_url, method='GET', data=params, raw=raw)
 
-    def post(self, relative_url, data=None, raw=False):
+    def post(self, *relative_url, data=None, raw=False):
         """
-        Post data to a running instance of CATMAID.
+        Post data to a running instance of CATMAID. 
 
         Parameters
         ----------
-        relative_url: str
-            URL to send the request to, relative to the base_url
+        relative_url
+            URL to send the request to, relative to the base_url. *args will be joined with '/'
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
@@ -140,16 +141,16 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='POST', data=data, raw=raw)
+        return self.fetch(*relative_url, method='POST', data=data, raw=raw)
 
-    def fetch(self, relative_url, method='GET', data=None, raw=False):
+    def fetch(self, *relative_url, method='GET', data=None, raw=False):
         """
         Interact with the CATMAID server in a manner very similar to the javascript CATMAID.fetch API.
 
         Parameters
         ----------
-        relative_url: str
-            URL to send the request to, relative to the base_url
+        relative_url
+            URL to send the request to, relative to the base_url. *args will be joined with '/'
         method: {'GET', 'POST'}, optional
             HTTP method to use (the default is 'GET')
         data: dict or str, optional
@@ -162,7 +163,7 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        url = self._make_request_url(relative_url)
+        url = self._make_request_url(*relative_url)
         data = data or dict()
         if method.upper() == 'GET':
             response = self.session.get(url, params=data)
@@ -212,7 +213,7 @@ class CoordinateTransformer(object):
         -------
         CoordinateTransformer
         """
-        stack_info = catmaid_client.get('{}/stack/{}/info'.format(int(catmaid_client.project_id), int(stack_id)))
+        stack_info = catmaid_client.get(catmaid_client.project_id, 'stack', stack_id, 'info')
         return cls(stack_info['resolution'], stack_info['translation'])
 
     def _get_resolution_array(self, dims):
