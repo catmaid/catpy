@@ -60,7 +60,7 @@ class CatmaidClient(object):
             r.headers['X-Authorization'] = 'Token {}'.format(self.token)
             return super(CatmaidClient.CatmaidAuthToken, self).__call__(r)
 
-    def _make_catmaid_url(self, *args):
+    def _make_request_url(self, *args):
         return make_url(self.base_url, *args)
 
     @classmethod
@@ -156,7 +156,7 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        url = self._make_catmaid_url(relative_url)
+        url = self._make_request_url(relative_url)
         data = data or dict()
         if method.upper() == 'GET':
             response = self.session.get(url, params=data)
