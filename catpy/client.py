@@ -3,6 +3,7 @@
 
 import json
 
+from six import string_types
 import requests
 import numpy as np
 
@@ -67,8 +68,23 @@ class CatmaidClient(object):
             r.headers['X-Authorization'] = 'Token {}'.format(self.token)
             return super(CatmaidClient.CatmaidAuthToken, self).__call__(r)
 
-    def _make_request_url(self, *args):
-        return make_url(self.base_url, *args)
+    def _make_request_url(self, arg):
+        """
+        Create an absolute request URL for the CATMAID server.
+        
+        Parameters
+        ----------
+        arg : str or tuple of str
+            Relative URL (to the base_url). If a tuple is passed, its elements will be joined with '/'.
+            
+        Returns
+        -------
+        str
+        """
+        if isinstance(arg, string_types):
+            return make_url(self.base_url, arg)
+        else:
+            return make_url(self.base_url, *arg)
 
     @classmethod
     def from_json(cls, path, with_project_id=True):
@@ -103,14 +119,15 @@ class CatmaidClient(object):
             credentials.get('project_id', None) if with_project_id else None
         )
 
-    def get(self, *relative_url, params=None, raw=False):
+    def get(self, relative_url, params=None, raw=False):
         """
         Get data from a running instance of CATMAID.
 
         Parameters
         ----------
-        relative_url
-            URL to send the request to, relative to the base_url. *args will be joined with '/'
+        relative_url : str or tuple of str
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            with '/'.
         params: dict or str, optional
             JSON-like key/value data to be included in the get URL (defaults to empty)
         raw: bool, optional
@@ -121,16 +138,17 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(*relative_url, method='GET', data=params, raw=raw)
+        return self.fetch(relative_url, method='GET', data=params, raw=raw)
 
-    def post(self, *relative_url, data=None, raw=False):
+    def post(self, relative_url, data=None, raw=False):
         """
         Post data to a running instance of CATMAID. 
 
         Parameters
         ----------
-        relative_url
-            URL to send the request to, relative to the base_url. *args will be joined with '/'
+        relative_url : str or tuple of str
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            with '/'.
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
@@ -141,16 +159,17 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(*relative_url, method='POST', data=data, raw=raw)
+        return self.fetch(relative_url, method='POST', data=data, raw=raw)
 
-    def fetch(self, *relative_url, method='GET', data=None, raw=False):
+    def fetch(self, relative_url, method='GET', data=None, raw=False):
         """
         Interact with the CATMAID server in a manner very similar to the javascript CATMAID.fetch API.
 
         Parameters
         ----------
-        relative_url
-            URL to send the request to, relative to the base_url. *args will be joined with '/'
+        relative_url : str or tuple of str
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            with '/'.
         method: {'GET', 'POST'}, optional
             HTTP method to use (the default is 'GET')
         data: dict or str, optional
@@ -163,7 +182,7 @@ class CatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        url = self._make_request_url(*relative_url)
+        url = self._make_request_url(relative_url)
         data = data or dict()
         if method.upper() == 'GET':
             response = self.session.get(url, params=data)
@@ -213,7 +232,7 @@ class CoordinateTransformer(object):
         -------
         CoordinateTransformer
         """
-        stack_info = catmaid_client.get(catmaid_client.project_id, 'stack', stack_id, 'info')
+        stack_info = catmaid_client.get((catmaid_client.project_id, 'stack', stack_id, 'info'))
         return cls(stack_info['resolution'], stack_info['translation'])
 
     def _get_resolution_array(self, dims):
@@ -236,12 +255,12 @@ class CoordinateTransformer(object):
         Parameters
         ----------
         project_coords : dict
-            x, y, and/or z coordinates in project/ real space
+            x, y, and/or z coordinates in project / real space
 
         Returns
         -------
         dict
-            coordinates transformed into stack/voxel space
+            coordinates transformed into stack / voxel space
         """
         return {dim: self.project_to_stack_coord(dim, proj_coord) for dim, proj_coord in project_coords.items()}
 
@@ -252,14 +271,14 @@ class CoordinateTransformer(object):
         Parameters
         ----------
         arr : array-like
-            M by N array containing M coordinates in project space in N dimensions
+            M by N array containing M coordinates in project / real space in N dimensions
         dims : str
             Order of dimensions in columns, default 'xyz'
 
         Returns
         -------
         np.ndarray
-            M by N array containing M coordinates in stack space in N dimensions
+            M by N array containing M coordinates in stack / voxel space in N dimensions
         """
         arr = np.array(arr)
         resolution_arr = self._get_resolution_array(dims)
@@ -277,12 +296,12 @@ class CoordinateTransformer(object):
         Parameters
         ----------
         stack_coords : dict
-            x, y, and/or z coordinates in stack/ voxel space
+            x, y, and/or z coordinates in stack / voxel space
 
         Returns
         -------
         dict
-            coordinates transformed into project/ real space
+            coordinates transformed into project / real space
         """
         return {dim: self.stack_to_project_coord(dim, stack_coord) for dim, stack_coord in stack_coords.items()}
 
@@ -293,14 +312,14 @@ class CoordinateTransformer(object):
         Parameters
         ----------
         arr : array-like
-            M by N array containing M coordinates in stack space in N dimensions
+            M by N array containing M coordinates in stack / voxel space in N dimensions
         dims : array-like or str
             Order of dimensions in columns, default (x, y, z)
 
         Returns
         -------
         np.ndarray
-            M by N array containing M coordinates in project space in N dimensions
+            M by N array containing M coordinates in project / real space in N dimensions
         """
         arr = np.array(arr)
         resolution_arr = self._get_resolution_array(dims)
