@@ -35,7 +35,7 @@ class CatmaidClient(object):
     Python object handling authentication, request pooling etc. for requests made to a CATMAID server.
     """
 
-    def __init__(self, base_url, token, auth_name=None, auth_pass=None, project_id=None):
+    def __init__(self, base_url, token=None, auth_name=None, auth_pass=None, project_id=None):
         """
         Instantiate CatmaidClient object for handling requests to a CATMAID server.
 
@@ -54,19 +54,49 @@ class CatmaidClient(object):
         """
         self.base_url = base_url
 
-        self.session = requests.Session()
-        self.session.auth = self.CatmaidAuthToken(token, auth_name, auth_pass)
+        self._session = requests.Session()
+        if auth_name is not None and auth_pass is not None:
+            self.set_http_auth(auth_name, auth_pass)
+        if token is not None:
+            self.set_api_token(token)
 
         self.project_id = project_id
 
-    class CatmaidAuthToken(requests.auth.HTTPBasicAuth):
-        def __init__(self, token, auth_name=None, auth_pass=None):
-            self.token = token
-            super(CatmaidClient.CatmaidAuthToken, self).__init__(auth_name, auth_pass)
+    def set_http_auth(self, username, password):
+        """
+        Set HTTP authorization for CatmaidClient in place.
+        
+        Parameters
+        ----------
+        username : str
+            HTTP authorization username
+        password : str
+            HTTP authorization password
+            
+        Returns
+        -------
+        CatmaidClient
+            Reference to the same, now-authenticated CatmaidClient instance
+        """
+        self._session.auth = (username, password)
+        return self
 
-        def __call__(self, r):
-            r.headers['X-Authorization'] = 'Token {}'.format(self.token)
-            return super(CatmaidClient.CatmaidAuthToken, self).__call__(r)
+    def set_api_token(self, token):
+        """
+        Set CatmaidClient to use the given API token in place.
+        
+        Parameters
+        ----------
+        token : str
+            API token associated with your CATMAID account
+            
+        Returns
+        -------
+        CatmaidClient
+            Reference to the same, now-authenticated CatmaidClient instance
+        """
+        self._session.headers['X-Authorization'] = 'Token ' + token
+        return self
 
     def _make_request_url(self, arg):
         """
@@ -89,13 +119,15 @@ class CatmaidClient(object):
     @classmethod
     def from_json(cls, path, with_project_id=True):
         """
-        Return a CatmaidClient instance with credentials matching those in a JSON file. Should have the properties:
+        Return a CatmaidClient instance with credentials matching those in a JSON file. Should have the property 
+        `base_url` as a minimum.
+        
+        If HTTP authentication is required, should have the properties `auth_name` and `auth_pass`.
+        
+        If you intend to use an authorized CATMAID account (required for some endpoints), should have the property 
+        `token`.
 
-        base_url, token, auth_name, auth_pass
-
-        And optionally
-
-        project_id
+        Can optionally include the property `project_id`.
 
         Parameters
         ----------
@@ -107,16 +139,16 @@ class CatmaidClient(object):
         Returns
         -------
         CatmaidClient
-            Authenticated instance of the API
+            Instance of the API, authenticated with 
         """
         with open(path) as f:
             credentials = json.load(f)
         return cls(
             credentials['base_url'],
-            credentials['token'],
-            credentials['auth_name'],
-            credentials['auth_pass'],
-            credentials.get('project_id', None) if with_project_id else None
+            credentials.get('token'),
+            credentials.get('auth_name'),
+            credentials.get('auth_pass'),
+            credentials.get('project_id') if with_project_id else None
         )
 
     def get(self, relative_url, params=None, raw=False):
@@ -185,12 +217,13 @@ class CatmaidClient(object):
         url = self._make_request_url(relative_url)
         data = data or dict()
         if method.upper() == 'GET':
-            response = self.session.get(url, params=data)
+            response = self._session.get(url, params=data)
         elif method.upper() == 'POST':
-            response = self.session.post(url, data=data)
+            response = self._session.post(url, data=data)
         else:
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
+        response.raise_for_status()
         return response.json() if not raw else response.text
 
 
