@@ -11,7 +11,7 @@ script: tox -e ${TOXENV}
 after_success:
     - CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3 codeclimate-test-reporter
 deploy:
-  true:
+  on:
     condition: $TOXENV == py27
     repo: catmaid/catpy
     tags: true
