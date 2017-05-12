@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 import json
 
 import requests
@@ -7,6 +10,9 @@ import numpy as np
 def make_url(base_url, *args):
     """
     Given any number of URL components, join them as if they were a path regardless of trailing and prepending slashes
+
+    Examples
+    --------
 
     >>> make_url('google.com', 'mail')
     'google.com/mail'
@@ -30,7 +36,7 @@ class CatmaidClient(object):
     def __init__(self, base_url, token, auth_name=None, auth_pass=None, project_id=None):
         """
         Instantiate CatmaidClient object for handling requests to a CATMAID server.
-        
+
         Parameters
         ----------
         base_url : str
@@ -195,7 +201,7 @@ class CoordinateTransformer(object):
     def from_catmaid(cls, catmaid_client, stack_id):
         """
         Return a CoordinateTransformer for a particular CATMAID stack.
-        
+
         Parameters
         ----------
         catmaid_client : CatmaidClient
@@ -241,7 +247,7 @@ class CoordinateTransformer(object):
     def project_to_stack_array(self, arr, dims='xyz'):
         """
         Take an array of points in project space and transform them into stack space.
-        
+
         Parameters
         ----------
         arr : array-like
@@ -282,7 +288,7 @@ class CoordinateTransformer(object):
     def stack_to_project_array(self, arr, dims='xyz'):
         """
         Take an array of points in stack space and transform them into project space.
-        
+
         Parameters
         ----------
         arr : array-like
@@ -300,9 +306,3 @@ class CoordinateTransformer(object):
         translation_arr = self._get_translation_array(dims)
 
         return arr * resolution_arr + translation_arr
-
-
-if __name__ == '__main__':
-    import doctest
-
-    doctest.testmod()
