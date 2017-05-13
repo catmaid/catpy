@@ -65,14 +65,14 @@ class CatmaidClient(object):
     def set_http_auth(self, username, password):
         """
         Set HTTP authorization for CatmaidClient in place.
-        
+
         Parameters
         ----------
         username : str
             HTTP authorization username
         password : str
             HTTP authorization password
-            
+
         Returns
         -------
         CatmaidClient
@@ -84,12 +84,12 @@ class CatmaidClient(object):
     def set_api_token(self, token):
         """
         Set CatmaidClient to use the given API token in place.
-        
+
         Parameters
         ----------
         token : str
             API token associated with your CATMAID account
-            
+
         Returns
         -------
         CatmaidClient
@@ -101,12 +101,12 @@ class CatmaidClient(object):
     def _make_request_url(self, arg):
         """
         Create an absolute request URL for the CATMAID server.
-        
+
         Parameters
         ----------
         arg : str or tuple of str
             Relative URL (to the base_url). If a tuple is passed, its elements will be joined with '/'.
-            
+
         Returns
         -------
         str
@@ -119,12 +119,12 @@ class CatmaidClient(object):
     @classmethod
     def from_json(cls, path, with_project_id=True):
         """
-        Return a CatmaidClient instance with credentials matching those in a JSON file. Should have the property 
+        Return a CatmaidClient instance with credentials matching those in a JSON file. Should have the property
         `base_url` as a minimum.
-        
+
         If HTTP authentication is required, should have the properties `auth_name` and `auth_pass`.
-        
-        If you intend to use an authorized CATMAID account (required for some endpoints), should have the property 
+
+        If you intend to use an authorized CATMAID account (required for some endpoints), should have the property
         `token`.
 
         Can optionally include the property `project_id`.
@@ -139,7 +139,7 @@ class CatmaidClient(object):
         Returns
         -------
         CatmaidClient
-            Instance of the API, authenticated with 
+            Instance of the API, authenticated with
         """
         with open(path) as f:
             credentials = json.load(f)
@@ -158,7 +158,7 @@ class CatmaidClient(object):
         Parameters
         ----------
         relative_url : str or tuple of str
-            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
             with '/'.
         params: dict or str, optional
             JSON-like key/value data to be included in the get URL (defaults to empty)
@@ -174,12 +174,12 @@ class CatmaidClient(object):
 
     def post(self, relative_url, data=None, raw=False):
         """
-        Post data to a running instance of CATMAID. 
+        Post data to a running instance of CATMAID.
 
         Parameters
         ----------
         relative_url : str or tuple of str
-            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
             with '/'.
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
@@ -200,7 +200,7 @@ class CatmaidClient(object):
         Parameters
         ----------
         relative_url : str or tuple of str
-            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined 
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
             with '/'.
         method: {'GET', 'POST'}, optional
             HTTP method to use (the default is 'GET')
