@@ -6,10 +6,11 @@ python:
     - 2.7
 notifications:
   email: false
-install: pip install tox-travis
+install: pip install tox-travis coverage==4.3.4 codeclimate-test-reporter
 script: tox
 after_success:
-    - CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3 codeclimate-test-reporter
+    - test $TRAVIS_PYTHON_VERSION = "2.7" &&
+      CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3 codeclimate-test-reporter --file .coverage.py27
 deploy:
   on:
     repo: catmaid/catpy
