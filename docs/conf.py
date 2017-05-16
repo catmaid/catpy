@@ -59,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'catpy'
-copyright = u"2017, Andrew S. Champion"
+copyright = u"2017, catpy Developers"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
