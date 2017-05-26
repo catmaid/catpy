@@ -163,7 +163,7 @@ class CatmaidClient(object):
         params: dict or str, optional
             JSON-like key/value data to be included in the get URL (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string regardless of its content-type (by default, JSON responses will 
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
             be parsed)
         kwargs
             Extra keyword arguments to pass to `requests.Session.get()`
@@ -187,7 +187,7 @@ class CatmaidClient(object):
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string regardless of its content-type (by default, JSON responses will 
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
             be parsed)
         kwargs
             Extra keyword arguments to pass to `requests.Session.post()`
@@ -213,7 +213,7 @@ class CatmaidClient(object):
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string regardless of its content-type (by default, JSON responses will 
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
             be parsed)
         kwargs
             Extra keyword arguments to pass to `requests.Session.get/post()`, depending on `method`
@@ -221,7 +221,7 @@ class CatmaidClient(object):
         Returns
         -------
         dict or list or str
-            Data returned from CATMAID. JSON responses will be parsed unless `raw` is `True`; all other responses 
+            Data returned from CATMAID. JSON responses will be parsed unless `raw` is `True`; all other responses
             will be returned as strings.
         """
         url = self._make_request_url(relative_url)
