@@ -211,8 +211,9 @@ class CatmaidClient(object):
 
         Returns
         -------
-        dict or str
-            Data returned from CATMAID: type depends on the 'raw' parameter.
+        dict or list or str
+            Data returned from CATMAID. JSON responses will be parsed unless `raw` is `True`; all other responses 
+            will be returned as strings.
         """
         url = self._make_request_url(relative_url)
         data = data or dict()
@@ -224,7 +225,10 @@ class CatmaidClient(object):
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
         response.raise_for_status()
-        return response.json() if not raw else response.text
+        if response.headers['content-type'] == 'application/json' and not raw:
+            return response.json()
+        else:
+            return response.text
 
 
 class CoordinateTransformer(object):
