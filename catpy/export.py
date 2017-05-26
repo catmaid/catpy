@@ -4,7 +4,7 @@ from warnings import warn
 
 from networkx.readwrite import json_graph
 
-from catpy.client import CatmaidClientApplication, CoordinateTransformer
+from catpy.client import CatmaidClientApplication
 
 
 class ExportWidget(CatmaidClientApplication):
@@ -26,40 +26,13 @@ class ExportWidget(CatmaidClientApplication):
             {'linearize_ids': 'true' if linearize_ids else 'false'}
         )
 
-    def get_treenode_archive(self, skeleton_ids, stack_id, xy_in_px=True, xy_radius=100, sample=False):
-        transformer = CoordinateTransformer.from_catmaid(self._catmaid, stack_id)
-        assert transformer.resolution['x'] == transformer.resolution['y'], \
-            "The export is currently only designed for stacks with the same X and Y resolution. This is not the case " \
-            "for the current stack."
+    def get_connector_archive(self, *args, **kwargs):
+        """Not implemented: requires an async job"""
+        raise NotImplementedError
 
-        data = {
-            'stackid': stack_id,
-            'skids': list(skeleton_ids),
-            'x_radius': xy_radius if not xy_in_px else round(xy_radius * transformer.resolution['x']),
-            'y_radius': xy_radius if not xy_in_px else round(xy_radius * transformer.resolution['y']),
-            'z_radius': 0,
-            'sample': int(sample)
-        }
-        # todo: how to handle response
-        self.post((self.project_id, 'treenodearchive/export'), data)
-
-    def get_connector_archive(self, skeleton_ids, stack_id, xy_in_px=True, z_in_sections=True, xy_radius=100,
-                              z_radius=10, sample=False):
-        transformer = CoordinateTransformer.from_catmaid(self._catmaid, stack_id)
-        assert transformer.resolution['x'] == transformer.resolution['y'], \
-            "The export is currently only designed for stacks with the same X and Y resolution. This is not the case " \
-            "for the current stack."
-
-        data = {
-            'stackid': stack_id,
-            'skids': list(skeleton_ids),
-            'x_radius': xy_radius if not xy_in_px else round(xy_radius * transformer.resolution['x']),
-            'y_radius': xy_radius if not xy_in_px else round(xy_radius * transformer.resolution['y']),
-            'z_radius': z_radius if not z_in_sections else round(z_radius * transformer.resolution['z']),
-            'sample': int(sample)
-        }
-        # todo: how to handle response
-        self.post((self.project_id, 'connectorarchive/export'), data)
+    def get_treenode_archive(self, *args, **kwargs):
+        """Not implemented: requires an async job"""
+        raise NotImplementedError
 
     def get_networkx_dict(self, *skeleton_ids):
         """
