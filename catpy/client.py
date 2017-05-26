@@ -2,8 +2,10 @@
 
 
 import json
+from functools import wraps
+from abc import ABCMeta
 
-from six import string_types
+from six import string_types, add_metaclass
 import requests
 import numpy as np
 
@@ -238,6 +240,28 @@ class CatmaidClient(object):
             return response.json()
         else:
             return response.text
+
+
+@add_metaclass(ABCMeta)
+class CatmaidClientApplication(object):
+    def __init__(self, catmaid_client):
+        self._catmaid = catmaid_client
+
+    @property
+    def project_id(self):
+        return self._catmaid.project_id
+
+    @wraps(CatmaidClient.get)
+    def get(self, *args, **kwargs):
+        return self._catmaid.get(*args, **kwargs)
+
+    @wraps(CatmaidClient.post)
+    def post(self, *args, **kwargs):
+        return self._catmaid.post(*args, **kwargs)
+
+    @wraps(CatmaidClient.fetch)
+    def fetch(self, *args, **kwargs):
+        return self._catmaid.fetch(*args, **kwargs)
 
 
 class CoordinateTransformer(object):
