@@ -151,7 +151,7 @@ class CatmaidClient(object):
             credentials.get('project_id') if with_project_id else None
         )
 
-    def get(self, relative_url, params=None, raw=False):
+    def get(self, relative_url, params=None, raw=False, **kwargs):
         """
         Get data from a running instance of CATMAID.
 
@@ -163,16 +163,19 @@ class CatmaidClient(object):
         params: dict or str, optional
             JSON-like key/value data to be included in the get URL (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string (defaults to returning a dict)
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
+            be parsed)
+        kwargs
+            Extra keyword arguments to pass to `requests.Session.get()`
 
         Returns
         -------
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='GET', data=params, raw=raw)
+        return self.fetch(relative_url, method='GET', data=params, raw=raw, **kwargs)
 
-    def post(self, relative_url, data=None, raw=False):
+    def post(self, relative_url, data=None, raw=False, **kwargs):
         """
         Post data to a running instance of CATMAID.
 
@@ -184,16 +187,19 @@ class CatmaidClient(object):
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string (defaults to returning a dict)
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
+            be parsed)
+        kwargs
+            Extra keyword arguments to pass to `requests.Session.post()`
 
         Returns
         -------
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='POST', data=data, raw=raw)
+        return self.fetch(relative_url, method='POST', data=data, raw=raw, **kwargs)
 
-    def fetch(self, relative_url, method='GET', data=None, raw=False):
+    def fetch(self, relative_url, method='GET', data=None, raw=False, **kwargs):
         """
         Interact with the CATMAID server in a manner very similar to the javascript CATMAID.fetch API.
 
@@ -207,24 +213,31 @@ class CatmaidClient(object):
         data: dict or str, optional
             JSON-like key/value data to be included in the request as a payload (defaults to empty)
         raw: bool, optional
-            Whether to return the response as a string (defaults to returning a dict)
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
+            be parsed)
+        kwargs
+            Extra keyword arguments to pass to `requests.Session.get/post()`, depending on `method`
 
         Returns
         -------
-        dict or str
-            Data returned from CATMAID: type depends on the 'raw' parameter.
+        dict or list or str
+            Data returned from CATMAID. JSON responses will be parsed unless `raw` is `True`; all other responses
+            will be returned as strings.
         """
         url = self._make_request_url(relative_url)
         data = data or dict()
         if method.upper() == 'GET':
-            response = self._session.get(url, params=data)
+            response = self._session.get(url, params=data, **kwargs)
         elif method.upper() == 'POST':
-            response = self._session.post(url, data=data)
+            response = self._session.post(url, data=data, **kwargs)
         else:
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
         response.raise_for_status()
-        return response.json() if not raw else response.text
+        if response.headers['content-type'] == 'application/json' and not raw:
+            return response.json()
+        else:
+            return response.text
 
 
 class CoordinateTransformer(object):
