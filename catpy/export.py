@@ -146,7 +146,7 @@ class ExportWidget(CatmaidClientApplication):
             for treenode in data[0]:
                 skeleton['treenodes'][int(treenode[0])] = {
                     'location': treenode[3:6],
-                    'parent_id': int(treenode[1])
+                    'parent_id': None if treenode[1] is None else int(treenode[1])
                 }
 
             for connector in data[1]:
