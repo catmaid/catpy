@@ -287,7 +287,7 @@ class CoordinateTransformer(object):
         return self._resolution_arrays[dims]
 
     def _get_translation_array(self, dims):
-        if dims not in self._resolution_arrays:
+        if dims not in self._translation_arrays:
             self._translation_arrays[dims] = np.array([self.translation[dim] for dim in dims])
         return self._translation_arrays[dims]
 
