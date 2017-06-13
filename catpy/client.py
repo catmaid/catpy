@@ -51,7 +51,7 @@ def raise_if_error_response(response):
     """Raise a CatmaidApiException if the response is a JSON-formatted error from Django"""
     if response.headers['content-type'] == 'application/json':
         data = response.json()
-        if {'error', 'traceback'}.issubset(data):
+        if isinstance(data, dict) and {'error', 'traceback'}.issubset(data):
             reraise(CatmaidApiException, response, data['traceback'])
 
 
