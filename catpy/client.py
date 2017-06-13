@@ -6,6 +6,7 @@ from functools import wraps
 from abc import ABCMeta
 
 from six import string_types, add_metaclass
+from six import reraise
 import requests
 import numpy as np
 
@@ -30,6 +31,28 @@ def make_url(base_url, *args):
         base_url = requests.compat.urljoin(base_url + joiner, relative)
 
     return base_url
+
+
+class CatmaidApiException(requests.exceptions.RequestException):
+    def __init__(self, response, *args, **kwargs):
+        """
+
+        Parameters
+        ----------
+        response : requests.Response
+            Response containing JSON-formatted error from Django
+        """
+        data = response.json()
+        super(CatmaidApiException, self).__init__(data.get('error', ''), response=response, *args, **kwargs)
+        self.__dict__.update(data)
+
+
+def raise_if_error_response(response):
+    """Raise a CatmaidApiException if the response is a JSON-formatted error from Django"""
+    if response.headers['content-type'] == 'application/json':
+        data = response.json()
+        if {'error', 'traceback'}.issubset(data):
+            reraise(CatmaidApiException, response, data['traceback'])
 
 
 class CatmaidClient(object):
@@ -236,6 +259,7 @@ class CatmaidClient(object):
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
         response.raise_for_status()
+        raise_if_error_response(response)
         if response.headers['content-type'] == 'application/json' and not raw:
             return response.json()
         else:
