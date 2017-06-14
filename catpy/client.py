@@ -6,7 +6,6 @@ from functools import wraps
 from abc import ABCMeta
 
 from six import string_types, add_metaclass
-from six import reraise
 import requests
 import numpy as np
 
@@ -33,26 +32,44 @@ def make_url(base_url, *args):
     return base_url
 
 
-class CatmaidApiException(requests.exceptions.RequestException):
-    def __init__(self, response, *args, **kwargs):
+class WrappedCatmaidException(Exception):
+    exception_keys = frozenset(('traceback', 'error', 'type'))
+    spacer = '    '
+
+    def __init__(self, message, response):
         """
+        Exception wrapping a django error which results in a JSON response being returned containing information
+        about that error.
 
         Parameters
         ----------
         response : requests.Response
             Response containing JSON-formatted error from Django
         """
+        super(WrappedCatmaidException, self).__init__(message)
+        self.msg = message
         data = response.json()
-        super(CatmaidApiException, self).__init__(data.get('error', ''), response=response, *args, **kwargs)
-        self.__dict__.update(data)
+        self.traceback = data['traceback']
+        self.type = data['type']
+        self.error = data['error']
 
+    def __str__(self):
+        return '\n'.join([
+                    super(WrappedCatmaidException, self).__str__(),
+                    self.spacer + 'Response contained traceback (most recent call last):'
+                ] + [
+                    self.spacer + line for line in self.traceback.split('\n')
+                ] + [
+                    '{}{}: {}'.format(self.spacer, self.type, self.error)
+                ]
+            )
 
-def raise_if_error_response(response):
-    """Raise a CatmaidApiException if the response is a JSON-formatted error from Django"""
-    if response.headers['content-type'] == 'application/json':
-        data = response.json()
-        if isinstance(data, dict) and {'error', 'traceback'}.issubset(data):
-            reraise(CatmaidApiException, response, data['traceback'])
+    @classmethod
+    def raise_on_error(cls, response):
+        if response.headers.get('content-type') == 'application/json':
+            data = response.json()
+            if isinstance(data, dict) and cls.exception_keys.issubset(data):
+                raise cls('Received error response from {}'.format(response.url), response)
 
 
 class CatmaidClient(object):
@@ -259,7 +276,7 @@ class CatmaidClient(object):
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
         response.raise_for_status()
-        raise_if_error_response(response)
+        WrappedCatmaidException.raise_on_error(response)
         if response.headers['content-type'] == 'application/json' and not raw:
             return response.json()
         else:
