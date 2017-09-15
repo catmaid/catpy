@@ -2,8 +2,10 @@
 
 
 import json
+from functools import wraps
+from abc import ABCMeta
 
-from six import string_types
+from six import string_types, add_metaclass
 import requests
 import numpy as np
 
@@ -28,6 +30,46 @@ def make_url(base_url, *args):
         base_url = requests.compat.urljoin(base_url + joiner, relative)
 
     return base_url
+
+
+class WrappedCatmaidException(Exception):
+    exception_keys = frozenset(('traceback', 'error', 'type'))
+    spacer = '    '
+
+    def __init__(self, message, response):
+        """
+        Exception wrapping a django error which results in a JSON response being returned containing information
+        about that error.
+
+        Parameters
+        ----------
+        response : requests.Response
+            Response containing JSON-formatted error from Django
+        """
+        super(WrappedCatmaidException, self).__init__(message)
+        self.msg = message
+        data = response.json()
+        self.traceback = data['traceback']
+        self.type = data['type']
+        self.error = data['error']
+
+    def __str__(self):
+        return '\n'.join([
+                    super(WrappedCatmaidException, self).__str__(),
+                    self.spacer + 'Response contained traceback (most recent call last):'
+                ] + [
+                    self.spacer + line for line in self.traceback.split('\n')
+                ] + [
+                    '{}{}: {}'.format(self.spacer, self.type, self.error)
+                ]
+            )
+
+    @classmethod
+    def raise_on_error(cls, response):
+        if response.headers.get('content-type') == 'application/json':
+            data = response.json()
+            if isinstance(data, dict) and cls.exception_keys.issubset(data):
+                raise cls('Received error response from {}'.format(response.url), response)
 
 
 class CatmaidClient(object):
@@ -234,10 +276,33 @@ class CatmaidClient(object):
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
         response.raise_for_status()
+        WrappedCatmaidException.raise_on_error(response)
         if response.headers['content-type'] == 'application/json' and not raw:
             return response.json()
         else:
             return response.text
+
+
+@add_metaclass(ABCMeta)
+class CatmaidClientApplication(object):
+    def __init__(self, catmaid_client):
+        self._catmaid = catmaid_client
+
+    @property
+    def project_id(self):
+        return self._catmaid.project_id
+
+    @wraps(CatmaidClient.get)
+    def get(self, *args, **kwargs):
+        return self._catmaid.get(*args, **kwargs)
+
+    @wraps(CatmaidClient.post)
+    def post(self, *args, **kwargs):
+        return self._catmaid.post(*args, **kwargs)
+
+    @wraps(CatmaidClient.fetch)
+    def fetch(self, *args, **kwargs):
+        return self._catmaid.fetch(*args, **kwargs)
 
 
 class CoordinateTransformer(object):
@@ -287,7 +352,7 @@ class CoordinateTransformer(object):
         return self._resolution_arrays[dims]
 
     def _get_translation_array(self, dims):
-        if dims not in self._resolution_arrays:
+        if dims not in self._translation_arrays:
             self._translation_arrays[dims] = np.array([self.translation[dim] for dim in dims])
         return self._translation_arrays[dims]
 
