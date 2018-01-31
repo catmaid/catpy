@@ -1,3 +1,4 @@
+-r prod.txt
 bumpversion==0.5.3
 coverage==4.1
 cryptography==1.7
