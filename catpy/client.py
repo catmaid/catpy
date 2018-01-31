@@ -159,7 +159,7 @@ class CatmaidClient(object):
             return make_url(self.base_url, *arg)
 
     @classmethod
-    def from_json(cls, path, with_project_id=True):
+    def from_json(cls, credentials):
         """
         Return a CatmaidClient instance with credentials matching those in a JSON file. Should have the property
         `base_url` as a minimum.
@@ -173,24 +173,24 @@ class CatmaidClient(object):
 
         Parameters
         ----------
-        path : str
-            Path to the JSON credentials file
-        with_project_id : bool
-            Whether to look for the `project_id` field (it can be set later on the returned CatmaidClient instance)
+        credentials : str or dict
+            Path to the JSON credentials file, or a dict representing the object
 
         Returns
         -------
         CatmaidClient
-            Instance of the API, authenticated with
+            Instance of the API, authenticated with the encoded credentials
         """
-        with open(path) as f:
-            credentials = json.load(f)
+        if not isinstance(credentials, dict):
+            with open(str(credentials)) as f:
+                credentials = json.load(f)
+
         return cls(
             credentials['base_url'],
             credentials.get('token'),
             credentials.get('auth_name'),
             credentials.get('auth_pass'),
-            credentials.get('project_id') if with_project_id else None
+            credentials.get('project_id')
         )
 
     def get(self, relative_url, params=None, raw=False, **kwargs):
@@ -289,6 +289,10 @@ class CatmaidClientApplication(object):
         self._catmaid = catmaid_client
 
     @property
+    def base_url(self):
+        return self._catmaid.base_url
+
+    @property
     def project_id(self):
         return self._catmaid.project_id
 
@@ -303,6 +307,26 @@ class CatmaidClientApplication(object):
     @wraps(CatmaidClient.fetch)
     def fetch(self, *args, **kwargs):
         return self._catmaid.fetch(*args, **kwargs)
+
+    @classmethod
+    def from_json(cls, credentials, *args, **kwargs):
+        """
+        Return a CatmaidClientApplication instance whose underlying CatmaidClient object is instantiated from the JSON
+        file as per its own from_json method.
+
+        Parameters
+        ----------
+        path : str
+            Path to the JSON credentials file
+        args, kwargs
+            Arguments passed to constructor of concrete subclass
+
+        Returns
+        -------
+        CatmaidClient
+            Instance of the API, authenticated with
+        """
+        return cls(CatmaidClient.from_json(credentials), *args, **kwargs)
 
 
 class CoordinateTransformer(object):
@@ -335,8 +359,8 @@ class CoordinateTransformer(object):
 
         Parameters
         ----------
-        catmaid_client : CatmaidClient
-            Authenticated instance of CatmaidClient
+        catmaid_client : CatmaidClient or CatmaidClientApplication
+            Object capable of interfacing with Catmaid
         stack_id : int
 
         Returns
