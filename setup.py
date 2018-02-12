@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup
+import sys
 
 with open('README.rst') as readme_file:
     readme = readme_file.read()
@@ -22,6 +23,9 @@ setup_requirements = [
 test_requirements = [
     'pytest>=3',
 ]
+
+if sys.version_info < (3, 6):
+    test_requirements.append('mock>=2')
 
 setup(
     name='catpy',
