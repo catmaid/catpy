@@ -11,8 +11,13 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
+    'enum34>=1.1; python_version < "3.4"',
+    'futures>=3.2; python_version < "3.3"',
+    'networkx==1.11',
     'numpy>=1.12',
+    'Pillow>=5.0',
     'requests>=2.14',
+    'requests-futures>=0.9',
     'six>=1.10'
 ]
 
@@ -22,6 +27,7 @@ setup_requirements = [
 
 test_requirements = [
     'pytest>=3',
+    "mock==2.0.0; python_version < '3.6'"
 ]
 
 if sys.version_info < (3, 6):
