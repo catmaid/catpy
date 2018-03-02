@@ -1,6 +1,6 @@
 from __future__ import division, unicode_literals
 
-from itertools import permutations
+from itertools import permutations, product
 from random import Random
 
 import numpy as np
@@ -19,6 +19,9 @@ SEED = 1
 
 DIMS = 'xyz'
 DIRECTIONS = 'stack_to_project', 'project_to_stack'
+EXAMPLE_COORD = 10
+
+ZOOM_LEVELS = (-2, 0, 1)
 
 
 @pytest.fixture
@@ -69,7 +72,7 @@ def catmaid_mock(default_res, default_trans):
 
 
 @pytest.fixture
-def default_obj(default_res, default_trans):
+def default_coord_transformer(default_res, default_trans):
     return CoordinateTransformer(default_res, default_trans)
 
 
@@ -79,37 +82,37 @@ def test_instantiate(res_fixture, trans_fixture):
     assert CoordinateTransformer(res_fixture(), trans_fixture())
 
 
-def test_from_catmaid(default_obj, catmaid_mock):
-    assert CoordinateTransformer.from_catmaid(catmaid_mock, None) == default_obj
+def test_from_catmaid(default_coord_transformer, catmaid_mock):
+    assert CoordinateTransformer.from_catmaid(catmaid_mock, None) == default_coord_transformer
 
 
 @pytest.mark.parametrize('dim', DIMS)
-def test_project_to_stack_coord(dim, default_obj, default_res, default_trans):
-    project_coord = 10
+def test_project_to_stack_coord(dim, default_coord_transformer, default_res, default_trans):
+    project_coord = EXAMPLE_COORD
 
     expected_response = (project_coord - default_trans[dim]) / default_res[dim]
-    response = default_obj.project_to_stack_coord(dim, project_coord)
+    response = default_coord_transformer.project_to_stack_coord(dim, project_coord)
 
     assert response == expected_response
 
 
 @pytest.mark.parametrize('dim', DIMS)
-def test_stack_to_project_coord(dim, default_obj, default_res, default_trans):
-    stack_coord = 10
+def test_stack_to_project_coord(dim, default_coord_transformer, default_res, default_trans):
+    stack_coord = EXAMPLE_COORD
 
     expected_response = (stack_coord * default_res[dim]) + default_trans[dim]
-    response = default_obj.stack_to_project_coord(dim, stack_coord)
+    response = default_coord_transformer.stack_to_project_coord(dim, stack_coord)
 
     assert response == expected_response
 
 
 @pytest.mark.parametrize('direction', DIRECTIONS)
-def test_stack_to_project_and_project_to_stack(coordinate_generator, default_obj, direction):
+def test_stack_to_project_and_project_to_stack(coordinate_generator, default_coord_transformer, direction):
     for coords in coordinate_generator():
         expected_response = {
-            dim: getattr(default_obj, direction + '_coord')(dim, coord) for dim, coord in coords.items()
+            dim: getattr(default_coord_transformer, direction + '_coord')(dim, coord) for dim, coord in coords.items()
         }
-        actual_response = getattr(default_obj, direction)(coords)
+        actual_response = getattr(default_coord_transformer, direction)(coords)
 
         assert expected_response == actual_response
 
@@ -141,11 +144,70 @@ def get_expected_array_response(coordinate_transformer, direction, coords_list, 
 
 @pytest.mark.parametrize('dims', permutations('xyz'))
 @pytest.mark.parametrize('direction', DIRECTIONS)
-def test_arrays(coordinate_generator, default_obj, direction, dims):
+def test_arrays(coordinate_generator, default_coord_transformer, direction, dims):
     coords_list = list(coordinate_generator())
     coords_array = np.array([[coords[dim] for dim in dims] for coords in coords_list])
 
-    expected_response = get_expected_array_response(default_obj, direction, coords_list, dims)
-    actual_response = getattr(default_obj, direction + '_array')(coords_array, dims=dims)
+    expected_response = get_expected_array_response(default_coord_transformer, direction, coords_list, dims)
+    actual_response = getattr(default_coord_transformer, direction + '_array')(coords_array, dims=dims)
 
     assert np.allclose(actual_response, expected_response)
+
+
+@pytest.mark.parametrize('dim', 'xyz')
+def test_stack_to_scaled_coord(default_coord_transformer, dim):
+    coord = EXAMPLE_COORD
+    default_coord_transformer.scale_z = True
+
+    for src_zoom, tgt_zoom in product(ZOOM_LEVELS, repeat=2):
+        response = default_coord_transformer.stack_to_scaled_coord(dim, coord, tgt_zoom, src_zoom)
+        if tgt_zoom > src_zoom:
+            assert response < coord
+        elif tgt_zoom < src_zoom:
+            assert response > coord
+        else:
+            assert response == coord
+
+        assert response == coord / np.exp2(tgt_zoom - src_zoom)
+
+
+def test_stack_to_scaled_coord_z(default_coord_transformer):
+    """Test that no scaling is done in Z by default"""
+    coord = EXAMPLE_COORD
+    for src_zoom, tgt_zoom in product(ZOOM_LEVELS, repeat=2):
+        response = default_coord_transformer.stack_to_scaled_coord('z', coord, tgt_zoom, src_zoom)
+        assert response == coord
+
+
+@pytest.mark.parametrize('scale_z', (True, False))
+def test_stack_to_scaled(coordinate_generator, default_coord_transformer, scale_z):
+    default_coord_transformer.scale_z = scale_z
+    for coords in coordinate_generator():
+        for src_zoom, tgt_zoom in product(ZOOM_LEVELS, repeat=2):
+            expected_response = {
+                dim: default_coord_transformer.stack_to_scaled_coord(dim, coord, tgt_zoom, src_zoom)
+                for dim, coord in coords.items()
+            }
+            actual_response = default_coord_transformer.stack_to_scaled(coords, tgt_zoom, src_zoom)
+
+            assert expected_response == actual_response
+
+
+@pytest.mark.parametrize('scale_z', (True, False))
+@pytest.mark.parametrize('dims', permutations('xyz'))
+def test_stack_to_scaled_array(coordinate_generator, default_coord_transformer, scale_z, dims):
+    coords_list = list(coordinate_generator())
+    coords_array = np.array([[coords[dim] for dim in dims] for coords in coords_list])
+    default_coord_transformer.scale_z = scale_z
+
+    for src_zoom, tgt_zoom in product(ZOOM_LEVELS, repeat=2):
+        output = []
+        for coords in coords_list:
+            transformed = default_coord_transformer.stack_to_scaled(coords, tgt_zoom, src_zoom)
+            output.append([transformed[dim] for dim in dims])
+
+        expected_response = np.array(output)
+
+        actual_response = default_coord_transformer.stack_to_scaled_array(coords_array, tgt_zoom, src_zoom, dims)
+
+        assert np.allclose(expected_response, actual_response)

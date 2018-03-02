@@ -333,16 +333,21 @@ class CatmaidClientApplication(object):
 
 
 class CoordinateTransformer(object):
-    def __init__(self, resolution=None, translation=None):
+    def __init__(self, resolution=None, translation=None, scale_z=False):
         """
         Helper class for transforming between stack and project coordinates.
+
+        Wherever dimensions are required, they must be in lower case ('x', 'y', 'z').
 
         Parameters
         ----------
         resolution : dict
-            x, y and z resolution of the stack
+            x, y and z resolution of the stack, in project units (e.g. nm) per voxel side (i.e. pixel)
         translation : dict
             x, y and z the location of the stack's origin (0, 0, 0) in project space
+        scale_z : bool
+            Whether or not to scale z coordinates when using stack_to_scaled* methods. Default False is recommended, but
+            True may be useful for isotropic stacks.
         """
         if resolution is None:
             resolution = dict()
@@ -351,6 +356,7 @@ class CoordinateTransformer(object):
 
         self.resolution = {dim: resolution.get(dim, 1) for dim in 'xyz'}
         self.translation = {dim: translation.get(dim, 0) for dim in 'xyz'}
+        self.scale_z = scale_z
 
         self._resolution_arrays = dict()
         self._translation_arrays = dict()
@@ -465,11 +471,92 @@ class CoordinateTransformer(object):
 
         return arr * resolution_arr + translation_arr
 
+    def stack_to_scaled_coord(self, dim, stack_coord, tgt_zoom, src_zoom=0):
+        """
+        Convert a stack coordinate in a single dimension into a pixel coordinate at the given zoom level.
+
+        Whether z coordinates are scaled is controlled by the `scale_z` constructor argument/ instance variable.
+
+        Parameters
+        ----------
+        dim : {'x', 'y', 'z'}
+            Which dimension to act in
+        stack_coord : float
+        tgt_zoom : float
+            Desired zoom level out of the output coordinate
+        src_zoom : float
+            Zoom level of the given coordinate (default 0)
+
+        Returns
+        -------
+        float
+        """
+        if dim == 'z' and not self.scale_z:
+            return stack_coord
+        scale_diff = np.exp2(tgt_zoom - src_zoom)
+        return stack_coord / scale_diff
+
+    def stack_to_scaled(self, stack_coords, tgt_zoom, src_zoom=0):
+        """
+        Convert a point in stack space into a point in stack space at a different zoom level.
+
+        Whether z coordinates are scaled is controlled by the `scale_z` constructor argument/ instance variable.
+
+        Parameters
+        ----------
+        stack_coords : dict
+            x, y, and/or z coordinates in stack / voxel space
+        tgt_zoom : float
+            Desired zoom level out of the output coordinates
+        src_zoom : float
+            Zoom level of the given coordinates (default 0)
+
+        Returns
+        -------
+        dict
+            Rescaled coordinates
+        """
+        return {
+            dim: self.stack_to_scaled_coord(dim, proj_coord, tgt_zoom, src_zoom)
+            for dim, proj_coord in stack_coords.items()
+        }
+
+    def stack_to_scaled_array(self, arr, tgt_zoom, src_zoom=0, dims='xyz'):
+        """
+        Take an array of points in stack space into scale them to a different zoom level.
+
+        Whether z coordinates are scaled is controlled by the `scale_z` constructor argument/ instance variable.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            M by N array containing M coordinates in stack / voxel space in N dimensions
+        tgt_zoom : float
+            Desired zoom level out of the output coordinates
+        src_zoom : float
+            Zoom level of the given coordinates (default 0)
+        dims : str
+            Order of dimensions in columns, default (x, y, z)
+
+        Returns
+        -------
+        np.ndarray
+        """
+        scale_diff = np.exp2(tgt_zoom - src_zoom)
+        out = np.array(arr)
+
+        if self.scale_z:
+            return out / scale_diff
+        else:
+            xy_idxs = tuple(idx for idx, dim in enumerate(dims) if dim in 'xy')
+            out[:, xy_idxs] = out[:, xy_idxs] / scale_diff
+            return out
+
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-
-        return self.resolution == other.resolution and self.translation == other.translation
+        attributes = ('resolution', 'translation', 'scale_z')
+        return all(getattr(self, name) == getattr(other, name) for name in attributes)
 
 
 def get_typed(d, key, constructor=None, default=None):
