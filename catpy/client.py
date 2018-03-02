@@ -5,7 +5,7 @@ from __future__ import division, unicode_literals
 import json
 import webbrowser
 from functools import wraps
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from warnings import warn
 
 from six import string_types, add_metaclass
@@ -75,9 +75,74 @@ class WrappedCatmaidException(Exception):
                 raise cls('Received error response from {}'.format(response.url), response)
 
 
-class CatmaidClient(object):
+@add_metaclass(ABCMeta)
+class AbstractCatmaidClient(object):
+    """
+    Abstract parent class for CatmaidClient and CatmaidClientApplications.
+
+    Users should not subclass this; it is provided purely as a convenience for type checking.
+    """
+
+    def get(self, relative_url, params=None, raw=False, **kwargs):
+        """
+        Get data from a running instance of CATMAID.
+
+        Parameters
+        ----------
+        relative_url : str or tuple of str
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
+            with '/'.
+        params: dict or str, optional
+            JSON-like key/value data to be included in the get URL (defaults to empty)
+        raw: bool, optional
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
+            be parsed)
+        kwargs
+            Extra keyword arguments to pass to `requests.Session.get()`
+
+        Returns
+        -------
+        dict or str
+            Data returned from CATMAID: type depends on the 'raw' parameter.
+        """
+        return self.fetch(relative_url, method='GET', data=params, raw=raw, **kwargs)
+
+    def post(self, relative_url, data=None, raw=False, **kwargs):
+        """
+        Post data to a running instance of CATMAID.
+
+        Parameters
+        ----------
+        relative_url : str or tuple of str
+            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
+            with '/'.
+        data: dict or str, optional
+            JSON-like key/value data to be included in the request as a payload (defaults to empty)
+        raw: bool, optional
+            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
+            be parsed)
+        kwargs
+            Extra keyword arguments to pass to `requests.Session.post()`
+
+        Returns
+        -------
+        dict or str
+            Data returned from CATMAID: type depends on the 'raw' parameter.
+        """
+        return self.fetch(relative_url, method='POST', data=data, raw=raw, **kwargs)
+
+    @abstractmethod
+    def fetch(self, relative_url, method='GET', data=None, raw=False, **kwargs):
+        pass
+
+
+class CatmaidClient(AbstractCatmaidClient):
     """
     Python object handling authentication, request pooling etc. for requests made to a CATMAID server.
+
+    Users creating their own interface should not subclass this, but instead subclass CatmaidClientApplication, which
+    wraps a CatmaidClient object. This composition approach eases testing and sharing CatmaidClient instances among
+    different interfaces.
     """
 
     def __init__(self, base_url, token=None, auth_name=None, auth_pass=None, project_id=None):
@@ -196,54 +261,6 @@ class CatmaidClient(object):
             credentials.get('project_id')
         )
 
-    def get(self, relative_url, params=None, raw=False, **kwargs):
-        """
-        Get data from a running instance of CATMAID.
-
-        Parameters
-        ----------
-        relative_url : str or tuple of str
-            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
-            with '/'.
-        params: dict or str, optional
-            JSON-like key/value data to be included in the get URL (defaults to empty)
-        raw: bool, optional
-            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
-            be parsed)
-        kwargs
-            Extra keyword arguments to pass to `requests.Session.get()`
-
-        Returns
-        -------
-        dict or str
-            Data returned from CATMAID: type depends on the 'raw' parameter.
-        """
-        return self.fetch(relative_url, method='GET', data=params, raw=raw, **kwargs)
-
-    def post(self, relative_url, data=None, raw=False, **kwargs):
-        """
-        Post data to a running instance of CATMAID.
-
-        Parameters
-        ----------
-        relative_url : str or tuple of str
-            URL to send the request to, relative to the base_url. If a tuple is passed, its elements will be joined
-            with '/'.
-        data: dict or str, optional
-            JSON-like key/value data to be included in the request as a payload (defaults to empty)
-        raw: bool, optional
-            Whether to return the response as a string regardless of its content-type (by default, JSON responses will
-            be parsed)
-        kwargs
-            Extra keyword arguments to pass to `requests.Session.post()`
-
-        Returns
-        -------
-        dict or str
-            Data returned from CATMAID: type depends on the 'raw' parameter.
-        """
-        return self.fetch(relative_url, method='POST', data=data, raw=raw, **kwargs)
-
     def fetch(self, relative_url, method='GET', data=None, raw=False, **kwargs):
         """
         Interact with the CATMAID server in a manner very similar to the javascript CATMAID.fetch API.
@@ -287,8 +304,18 @@ class CatmaidClient(object):
 
 
 @add_metaclass(ABCMeta)
-class CatmaidClientApplication(object):
+class CatmaidClientApplication(AbstractCatmaidClient):
+    """
+    An application which uses the CATMAID interface. Users should subclass this when creating their own applications.
+    """
+
     def __init__(self, catmaid_client):
+        """
+
+        Parameters
+        ----------
+        catmaid_client : CatmaidClient
+        """
         self._catmaid = catmaid_client
 
     @property
@@ -298,14 +325,6 @@ class CatmaidClientApplication(object):
     @property
     def project_id(self):
         return self._catmaid.project_id
-
-    @wraps(CatmaidClient.get)
-    def get(self, *args, **kwargs):
-        return self._catmaid.get(*args, **kwargs)
-
-    @wraps(CatmaidClient.post)
-    def post(self, *args, **kwargs):
-        return self._catmaid.post(*args, **kwargs)
 
     @wraps(CatmaidClient.fetch)
     def fetch(self, *args, **kwargs):
