@@ -719,4 +719,4 @@ def test_imagefetcher_fetch(min_fetcher):
 def test_imagefetcher_get_wrappers(min_fetcher, space):
     min_fetcher.get = mock.Mock()
     getattr(min_fetcher, 'get_{}_space'.format(space.value))('roi', 'zoom_level')
-    min_fetcher.get.assert_called_with('roi', space, 'zoom_level')
+    min_fetcher.get.assert_called_with('roi', space, 'zoom_level', None)
