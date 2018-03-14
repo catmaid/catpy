@@ -332,18 +332,18 @@ def test_stack_fastest_mirror_gets_fastest():
 # TileCache tests #
 ###################
 
-def test_tilecache_can_push():
+def test_tilecache_can_set():
     cache = TileCache(None, None)
     key = 1
     value = 1
 
     assert len(cache) == 0
 
-    cache.push(key, value)
+    cache[key] = value
     assert len(cache) == 1
 
 
-def test_tilecache_push_refreshes_old():
+def test_tilecache_set_refreshes_old():
     """Ensure that newly-pushed items get appended to the end, even if they already exist in the cache"""
     cache = TileCache(None, None)
     key = 1
@@ -351,10 +351,10 @@ def test_tilecache_push_refreshes_old():
 
     assert len(cache) == 0
 
-    cache.push(key, value)
-    cache.push(2, 2)
+    cache[key] = value
+    cache[2] = 2
     assert list(cache) == [1, 2]
-    cache.push(1, 1)
+    cache[1] = 1
     assert list(cache) == [2, 1]
 
 
@@ -365,11 +365,20 @@ def test_tilecache_can_get():
 
     assert len(cache) == 0
 
-    cache.push(key, value)
+    cache[key] = value
     assert len(cache) == 1
 
-    response = cache.get(key)
+    response = cache[key]
     assert response == value
+
+
+def test_tilecache_lru():
+    cache = TileCache(None, None)
+    cache[1] = 1
+    cache[2] = 2
+    val = cache[1]
+    assert val == 1
+    assert list(cache) == [2, 1]
 
 
 def test_tilecache_can_clear():
@@ -379,7 +388,7 @@ def test_tilecache_can_clear():
 
     assert len(cache) == 0
 
-    cache.push(key, value)
+    cache[key] = value
     assert len(cache) == 1
 
     cache.clear()
@@ -390,10 +399,10 @@ def test_tilecache_can_constrain_len():
     cache = TileCache(3, None)
 
     for key in range(3):
-        cache.push(key, str(key))
+        cache[key] = str(key)
     assert set(cache) == {0, 1, 2}
 
-    cache.push(3, '3')
+    cache[3] = '3'
     assert set(cache) == {1, 2, 3}
 
 
@@ -404,10 +413,10 @@ def test_tilecache_can_constrain_bytes():
     cache = TileCache(None, int(nbytes*3.5))
 
     for key in range(3):
-        cache.push(key, arr)
+        cache[key] = arr
     assert set(cache) == {0, 1, 2}
 
-    cache.push(3, arr)
+    cache[3] = arr
     assert set(cache) == {1, 2, 3}
 
 
@@ -701,7 +710,7 @@ def test_imagefetcher_get_tile_from_cache(realistic_fetcher, tile_gen):
     height, width = cached.shape
     tile_index = TileIndex(0, 0, 0, 0, height, width)
 
-    realistic_fetcher._tile_cache.push(tile_index, cached)
+    realistic_fetcher._tile_cache[tile_index] = cached
     out = realistic_fetcher.get([[0, 0, 0], [1, height, width]], ROIMode.SCALED, 0)
     realistic_fetcher._fetch.assert_not_called()
     assert np.allclose(out.squeeze(), cached)

@@ -454,7 +454,7 @@ class TileCache(object):
 
         return sum(value.nbytes for value in self._dict.values())
 
-    def push(self, key, value):
+    def __setitem__(self, key, value):
         """
         Append value to cache under the given key. If this causes the cache to break the size constraints, remove the
         oldest items until it is valid again.
@@ -469,8 +469,10 @@ class TileCache(object):
         self._dict[key] = value
         self._constrain_size()
 
-    def get(self, key):
-        return self._dict[key]
+    def __getitem__(self, key):
+        value = self._dict.pop(key)
+        self._dict[key] = value
+        return value
 
     def clear(self):
         self._dict.clear()
@@ -492,8 +494,8 @@ class TileCache(object):
         if self.max_bytes is not None:
             total_bytes = self.current_bytes
             while total_bytes > self.max_bytes:
-                removed = self._dict.popitem(False)
-                total_bytes -= removed[1].nbytes
+                key, value = self._dict.popitem(False)
+                total_bytes -= value.nbytes
 
 
 class ImageFetcher(object):
@@ -676,7 +678,7 @@ class ImageFetcher(object):
         Future
         """
         try:
-            return self._tile_cache.get(tile_index)
+            return self._tile_cache[tile_index]
         except KeyError:
             pass
 
@@ -789,7 +791,7 @@ class ImageFetcher(object):
             'desc': 'Downloading tiles'
         }
         for src_tile, tile_index in self.tqdm(self._iter_tiles(tile_indices), **tqdm_kwargs):
-            self._tile_cache.push(tile_index, src_tile)
+            self._tile_cache[tile_index] = src_tile
             self._insert_tile_into_arr(tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out)
 
         return out
@@ -1022,7 +1024,7 @@ class ThreadedImageFetcher(ImageFetcher):
         Future
         """
         try:
-            return as_future_response(self._tile_cache.get(tile_index))
+            return as_future_response(self._tile_cache[tile_index])
         except KeyError:
             pass
 
