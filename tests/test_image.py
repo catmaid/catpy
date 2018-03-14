@@ -504,6 +504,23 @@ def test_imagefetcher_set_mirror_title_warns_too_many(min_fetcher):
     assert min_fetcher._mirror == min_fetcher.stack.mirrors[0]
 
 
+def test_imagefetcher_get_auth_default(min_fetcher):
+    min_fetcher.mirror = min_fetcher.stack.mirrors[0]
+    assert min_fetcher._session.auth is None
+
+
+def test_imagefetcher_get_auth_from_mirror(min_fetcher):
+    min_fetcher.stack.mirrors[0].auth = ('name', 'pass')
+    min_fetcher.mirror = min_fetcher.stack.mirrors[0]
+    assert min_fetcher._session.auth == ('name', 'pass')
+
+
+def test_imagefetcher_get_auth_fallback(min_fetcher):
+    min_fetcher.auth = ('name', 'pass')
+    min_fetcher.mirror = min_fetcher.stack.mirrors[0]
+    assert min_fetcher._session.auth == ('name', 'pass')
+
+
 def test_imagefetcher_clear_cache(min_fetcher):
     min_fetcher._tile_cache.clear = mock.Mock()
     min_fetcher.clear_cache()

@@ -235,7 +235,9 @@ class TileIndex(object):
 
 
 class StackMirror(object):
-    def __init__(self, image_base, tile_height, tile_width, tile_source_type, file_extension, title=None, position=0):
+    def __init__(
+        self, image_base, tile_height, tile_width, tile_source_type, file_extension, title=None, position=0, auth=None
+    ):
         """
         Representation of CATMAID stack mirror
 
@@ -249,6 +251,8 @@ class StackMirror(object):
         title : str
         position : int
         """
+        self.auth = auth
+
         self.image_base = image_base if image_base.endswith('/') else image_base + '/'
         self.tile_height = int(tile_height)
         self.tile_width = int(tile_width)
@@ -498,7 +502,7 @@ class ImageFetcher(object):
     def __init__(
         self, stack, output_orientation=DEFAULT_3D_ORIENTATION, preferred_mirror=None, timeout=1,
         cache_items=DEFAULT_CACHE_ITEMS, cache_bytes=DEFAULT_CACHE_BYTES,
-        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0
+        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0, auth=None
     ):
         """
 
@@ -507,18 +511,21 @@ class ImageFetcher(object):
         stack : Stack
         output_orientation : str or Orientation3D
             default Orientation3D.ZYX
-        preferred_mirror : int or str or StackMirror or None
+        preferred_mirror : int or str or StackMirror, optional
             default None
-        timeout : float
+        timeout : float, optional
             default 1
-        cache_items : int or None
+        cache_items : int, optional
             default 10
-        cache_bytes : int or None
+        cache_bytes : int, optional
             default None
         broken_slice_handling : str or BrokenSliceHandling
             default BrokenSliceHandling.FILL
-        cval : int
+        cval : int, optional
             default 0
+        auth : (str, str), optional
+            Tuple of (username, password) for basic HTTP authentication, to be used if the selected mirror has no
+            defined ``auth``. Default None
         """
         self.stack = stack
         self.depth_dimension = 'z'
@@ -535,9 +542,6 @@ class ImageFetcher(object):
 
         self._dimension_mappings = self._map_dimensions()
 
-        self._mirror = None
-        self.mirror = preferred_mirror
-
         self.timeout = timeout
 
         self.coord_trans = CoordinateTransformer(
@@ -547,8 +551,22 @@ class ImageFetcher(object):
         self.tqdm = tqdm if self.show_progress else DummyTqdm
 
         self._tile_cache = TileCache(cache_items, cache_bytes)
-        # todo: handle HTTP auth?
+
         self._session = requests.Session()
+        self._auth = auth
+
+        self._mirror = None
+        self.mirror = preferred_mirror
+
+    @property
+    def auth(self):
+        return self._auth
+
+    @auth.setter
+    def auth(self, name_pass):
+        self._auth = name_pass
+        if self._mirror and not self._mirror.auth:
+            self._session.auth = name_pass
 
     @property
     def mirror(self):
@@ -557,7 +575,9 @@ class ImageFetcher(object):
                 'No mirror set: falling back to {}, which may not be accessible.'
                 'You might want to run set_fastest_mirror.'.format(self.stack.mirrors[0].title)
             )
-            return self.stack.mirrors[0]
+            m = self.stack.mirrors[0]
+            self._session.auth = m.auth or self.auth
+            return m
         return self._mirror
 
     @mirror.setter
@@ -571,40 +591,48 @@ class ImageFetcher(object):
         """
         if preferred_mirror is None:
             self._mirror = None
-            return
-        if isinstance(preferred_mirror, StackMirror):
+
+        elif isinstance(preferred_mirror, StackMirror):
+
             if preferred_mirror not in self.stack.mirrors:
                 raise ValueError("Selected mirror is not in stack's mirrors")
             self._mirror = preferred_mirror
-            return
 
-        try:
-            pos = int(preferred_mirror)
-            matching_mirrors = [m for m in self.stack.mirrors if m.position == pos]
-            if not matching_mirrors:
-                warn('Preferred mirror position {} does not exist, choose from {}'.format(
-                    pos, ', '.join(str(m.position) for m in self.stack.mirrors)
-                ))
-                return
-            elif len(matching_mirrors) > 1:
-                warn('More than one mirror found for position {}, picking {}'.format(
-                    pos, matching_mirrors[0].title
-                ))
-            self._mirror = matching_mirrors[0]
-            return
-        except (ValueError, TypeError):
-            pass
+        else:
 
-        if isinstance(preferred_mirror, string_types):
-            matching_mirrors = [m for m in self.stack.mirrors if m.title == preferred_mirror]
-            if not matching_mirrors:
-                warn('Preferred mirror called {} does not exist, choose from {}'.format(
-                    preferred_mirror, ', '.join(m.title for m in self.stack.mirrors)
-                ))
-                return
-            elif len(matching_mirrors) > 1:
-                warn('More than one mirror found for title {}, picking first'.format(preferred_mirror))
-            self._mirror = matching_mirrors[0]
+            try:
+
+                pos = int(preferred_mirror)
+                matching_mirrors = [m for m in self.stack.mirrors if m.position == pos]
+
+                if not matching_mirrors:
+                    warn('Preferred mirror position {} does not exist, choose from {}'.format(
+                        pos, ', '.join(str(m.position) for m in self.stack.mirrors)
+                    ))
+                    return
+                elif len(matching_mirrors) > 1:
+                    warn('More than one mirror found for position {}, picking {}'.format(
+                        pos, matching_mirrors[0].title
+                    ))
+                self._mirror = matching_mirrors[0]
+
+            except (ValueError, TypeError):
+
+                if isinstance(preferred_mirror, string_types):
+                    matching_mirrors = [m for m in self.stack.mirrors if m.title == preferred_mirror]
+                    if not matching_mirrors:
+                        warn('Preferred mirror called {} does not exist, choose from {}'.format(
+                            preferred_mirror, ', '.join(m.title for m in self.stack.mirrors)
+                        ))
+                        return
+                    elif len(matching_mirrors) > 1:
+                        warn('More than one mirror found for title {}, picking first'.format(preferred_mirror))
+                    self._mirror = matching_mirrors[0]
+
+        if self._mirror is not None and self._mirror.auth:
+            self._session.auth = self._mirror.auth
+        else:
+            self._session.auth = self.auth
 
     def clear_cache(self):
         self._tile_cache.clear()
@@ -949,7 +977,7 @@ class ThreadedImageFetcher(ImageFetcher):
     def __init__(
         self, stack, output_orientation=DEFAULT_3D_ORIENTATION, preferred_mirror=None, timeout=1,
         cache_items=DEFAULT_CACHE_ITEMS, cache_bytes=DEFAULT_CACHE_BYTES,
-        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0, threads=THREADS
+        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0, auth=None, threads=THREADS
     ):
         """
         Note: for small numbers of tiles on fast internet connection, ImageFetcher may be faster
@@ -977,7 +1005,7 @@ class ThreadedImageFetcher(ImageFetcher):
         super(ThreadedImageFetcher, self).__init__(
             stack, output_orientation, preferred_mirror, timeout,
             cache_items, cache_bytes,
-            broken_slice_handling, cval
+            broken_slice_handling, cval, auth
         )
         self._session = FuturesSession(session=self._session, max_workers=threads)
 
