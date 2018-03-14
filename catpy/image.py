@@ -2,6 +2,7 @@
 
 from __future__ import division, unicode_literals
 
+import logging
 from io import BytesIO
 from collections import OrderedDict
 from timeit import timeit
@@ -20,6 +21,9 @@ import requests
 from requests_futures.sessions import FuturesSession
 
 from catpy import CoordinateTransformer
+
+
+logger = logging.getLogger()
 
 
 class DummyTqdm(object):
@@ -1041,6 +1045,7 @@ class ThreadedImageFetcher(ImageFetcher):
         return self._fetch(tile_index)
 
     def _iter_tiles(self, tile_indices):
+        logger.info('Queuing requests, may take a few seconds...')
         fetched_tiles = {self._get_tile(tile_index): tile_index for tile_index in tile_indices}
         for tile_future in as_completed(fetched_tiles):
             yield tile_future.result().array, fetched_tiles[tile_future]
