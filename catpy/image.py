@@ -398,12 +398,13 @@ class ProjectStack(Stack):
 
         Parameters
         ----------
+        dimension : dict
+            {'x': x, 'y': y, 'z': z}, size of stack in voxels
         translation : dict
             {'x': x, 'y': y, 'z': z}, origin of stack in project space
         resolution : dict
             {'x': x, 'y': y, 'z': z}, size of stack voxels in project units
-        dimension : dict
-            {'x': x, 'y': y, 'z': z}, size of stack in voxels
+        orientation : {'xy', 'xz' 'zy'}
         broken_slices : iterable of int
             z-slice indices which are missing from stack
         canary_location : dict
@@ -551,7 +552,7 @@ class ImageFetcher(object):
         self.timeout = timeout
 
         self.coord_trans = CoordinateTransformer(
-            *[getattr(self.stack, name, None) for name in ('resolution', 'translation')]
+            *[getattr(self.stack, name, None) for name in ('resolution', 'translation', 'orientation')]
         )
 
         self.tqdm = tqdm if self.show_progress else DummyTqdm

@@ -11,8 +11,7 @@ try:
 except ImportError:
     import mock
 
-from catpy.client import CoordinateTransformer
-
+from catpy.client import CoordinateTransformer, StackOrientation
 
 COUNT = 20
 SEED = 1
@@ -42,6 +41,9 @@ def default_trans():
     }
 
 
+default_orientation = 'XY'
+
+
 @pytest.fixture
 def coordinate_generator():
     """Return a generator which returns `count` randomly-generated coordinates in the range [-1000, 1000], in a mixture
@@ -65,7 +67,8 @@ def catmaid_mock(default_res, default_trans):
     catmaid = mock.Mock()
     stack_info = {
         'resolution': default_res,
-        'translation': default_trans
+        'translation': default_trans,
+        'orientation': default_orientation
     }
     catmaid.configure_mock(**{'get.return_value': stack_info})
     return catmaid
@@ -93,7 +96,7 @@ def test_project_to_stack_coord(dim, default_coord_transformer, default_res, def
     expected_response = (project_coord - default_trans[dim]) / default_res[dim]
     response = default_coord_transformer.project_to_stack_coord(dim, project_coord)
 
-    assert response == expected_response
+    assert response[1] == expected_response
 
 
 @pytest.mark.parametrize('dim', DIMS)
@@ -103,15 +106,15 @@ def test_stack_to_project_coord(dim, default_coord_transformer, default_res, def
     expected_response = (stack_coord * default_res[dim]) + default_trans[dim]
     response = default_coord_transformer.stack_to_project_coord(dim, stack_coord)
 
-    assert response == expected_response
+    assert response[1] == expected_response
 
 
 @pytest.mark.parametrize('direction', DIRECTIONS)
 def test_stack_to_project_and_project_to_stack(coordinate_generator, default_coord_transformer, direction):
     for coords in coordinate_generator():
-        expected_response = {
-            dim: getattr(default_coord_transformer, direction + '_coord')(dim, coord) for dim, coord in coords.items()
-        }
+        expected_response = dict(
+            getattr(default_coord_transformer, direction + '_coord')(dim, coord) for dim, coord in coords.items()
+        )
         actual_response = getattr(default_coord_transformer, direction)(coords)
 
         assert expected_response == actual_response
@@ -211,3 +214,40 @@ def test_stack_to_scaled_array(coordinate_generator, default_coord_transformer, 
         actual_response = default_coord_transformer.stack_to_scaled_array(coords_array, tgt_zoom, src_zoom, dims)
 
         assert np.allclose(expected_response, actual_response)
+
+
+@pytest.mark.parametrize('orientation', [
+    'XY',
+    'xy',
+    0,
+    StackOrientation.XY,
+    None
+])
+def test_can_validate_orientation_valid(orientation):
+    trans = CoordinateTransformer(orientation=orientation)
+    assert trans.orientation == 'xy'
+    assert trans.depth_dim == 'z'
+
+
+@pytest.mark.parametrize('orientation,expected_exception', [
+    [3, AttributeError],
+    ['xyz', ValueError],
+    ['xc', ValueError]
+])
+def test_can_validate_orientation_invalid(orientation, expected_exception):
+    with pytest.raises(expected_exception):
+        CoordinateTransformer(orientation=orientation)
+
+
+@pytest.mark.parametrize('orientation,direction,expected,', [
+    ['XY', 'project_to_stack', {'z': 0, 'y': 1, 'x': 2}],
+    ['XY', 'stack_to_project', {'z': 0, 'y': 1, 'x': 2}],
+    ['XZ', 'project_to_stack', {'z': 1, 'y': 0, 'x': 2}],
+    ['XZ', 'stack_to_project', {'z': 1, 'y': 0, 'x': 2}],
+    ['ZY', 'project_to_stack', {'z': 2, 'y': 1, 'x': 0}],
+    ['ZY', 'stack_to_project', {'z': 2, 'y': 1, 'x': 0}]
+])
+def test_project_to_stack_orientation_xy(orientation, direction, expected):
+    coord_trans = CoordinateTransformer(orientation=orientation)
+    result = getattr(coord_trans, direction)({'z': 0, 'y': 1, 'x': 2})
+    assert result == expected

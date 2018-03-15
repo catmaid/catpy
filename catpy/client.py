@@ -9,8 +9,22 @@ from abc import ABCMeta, abstractmethod
 from warnings import warn
 
 from six import string_types, add_metaclass
+from enum import IntEnum
 import requests
 import numpy as np
+
+
+class StackOrientation(IntEnum):
+    XY = 0
+    XZ = 1
+    ZY = 2
+
+
+orientation_strs = {
+    StackOrientation.XY: 'xy',
+    StackOrientation.XZ: 'xz',
+    StackOrientation.ZY: 'zy'
+}
 
 
 def make_url(base_url, *args):
@@ -352,7 +366,7 @@ class CatmaidClientApplication(AbstractCatmaidClient):
 
 
 class CoordinateTransformer(object):
-    def __init__(self, resolution=None, translation=None, scale_z=False):
+    def __init__(self, resolution=None, translation=None, orientation=StackOrientation.XY, scale_z=False):
         """
         Helper class for transforming between stack and project coordinates.
 
@@ -364,6 +378,13 @@ class CoordinateTransformer(object):
             x, y and z resolution of the stack, in project units (e.g. nm) per voxel side (i.e. pixel)
         translation : dict
             x, y and z the location of the stack's origin (0, 0, 0) in project space
+        orientation : StackOrientation or int or str or None
+            Orientation of the stack in relation to the project. Options:
+                StackOrientation
+                int corresponding to StackOrientation
+                'xy', 'xz', or 'zy'
+                None (reverts to default)
+            Default StackOrientation.XY
         scale_z : bool
             Whether or not to scale z coordinates when using stack_to_scaled* methods. Default False is recommended, but
             True may be useful for isotropic stacks.
@@ -373,12 +394,31 @@ class CoordinateTransformer(object):
         if translation is None:
             translation = dict()
 
-        self.resolution = {dim: resolution.get(dim, 1) for dim in 'xyz'}
-        self.translation = {dim: translation.get(dim, 0) for dim in 'xyz'}
+        self.resolution = {dim: resolution.get(dim, 1) for dim in 'zyx'}
+        self.translation = {dim: translation.get(dim, 0) for dim in 'zyx'}
         self.scale_z = scale_z
 
-        self._resolution_arrays = dict()
-        self._translation_arrays = dict()
+        self.orientation = self._validate_orientation(orientation)
+        self.depth_dim = [dim for dim in 'zyx' if dim not in self.orientation][0]
+
+        # mapping of project dimension to stack dimension, based on orientation
+        self._s2p = {
+            'x': self.orientation[0],
+            'y': self.orientation[1],
+            'z': self.depth_dim
+        }
+        # mapping of stack dimension to project dimension, based on orientation
+        self._p2s = {value: key for key, value in self._s2p.items()}
+
+    def _validate_orientation(self, orientation):
+        if orientation is None:
+            orientation = StackOrientation.XY
+        orientation = orientation_strs.get(orientation, orientation)
+        lower = orientation.lower()
+        if lower not in orientation_strs.values():
+            raise ValueError("orientation must be a StackOrientation, 'xy', 'xz', or 'zy'")
+
+        return lower
 
     @classmethod
     def from_catmaid(cls, catmaid_client, stack_id):
@@ -387,7 +427,7 @@ class CoordinateTransformer(object):
 
         Parameters
         ----------
-        catmaid_client : CatmaidClient or CatmaidClientApplication
+        catmaid_client : AbstractCatmaidClient
             Object capable of interfacing with Catmaid
         stack_id : int
 
@@ -396,20 +436,10 @@ class CoordinateTransformer(object):
         CoordinateTransformer
         """
         stack_info = catmaid_client.get((catmaid_client.project_id, 'stack', stack_id, 'info'))
-        return cls(stack_info['resolution'], stack_info['translation'])
+        return cls(stack_info['resolution'], stack_info['translation'], stack_info['orientation'])
 
-    def _get_resolution_array(self, dims):
-        if dims not in self._resolution_arrays:
-            self._resolution_arrays[dims] = np.array([self.resolution[dim] for dim in dims])
-        return self._resolution_arrays[dims]
-
-    def _get_translation_array(self, dims):
-        if dims not in self._translation_arrays:
-            self._translation_arrays[dims] = np.array([self.translation[dim] for dim in dims])
-        return self._translation_arrays[dims]
-
-    def project_to_stack_coord(self, dim, project_coord):
-        return (project_coord - self.translation[dim]) / self.resolution[dim]
+    def project_to_stack_coord(self, proj_dim, project_coord):
+        return self._p2s[proj_dim], (project_coord - self.translation[proj_dim]) / self.resolution[proj_dim]
 
     def project_to_stack(self, project_coords):
         """
@@ -425,32 +455,35 @@ class CoordinateTransformer(object):
         dict
             coordinates transformed into stack / voxel space
         """
-        return {dim: self.project_to_stack_coord(dim, proj_coord) for dim, proj_coord in project_coords.items()}
+        return dict(
+            self.project_to_stack_coord(proj_dim, proj_coord)
+            for proj_dim, proj_coord in project_coords.items()
+        )
 
     def project_to_stack_array(self, arr, dims='xyz'):
         """
         Take an array of points in project space and transform them into stack space.
 
+        Currently, this is a convenience method only; it does not yet utilise array operations.
+
         Parameters
         ----------
         arr : array-like
-            M by N array containing M coordinates in project / real space in N dimensions
+            M by 3 array containing M coordinates in project / real space in 3 dimensions
         dims : str
             Order of dimensions in columns, default 'xyz'
 
         Returns
         -------
         np.ndarray
-            M by N array containing M coordinates in stack / voxel space in N dimensions
+            M by 3 array containing M coordinates in stack / voxel space in 3 dimensions
         """
-        arr = np.array(arr)
-        resolution_arr = self._get_resolution_array(dims)
-        translation_arr = self._get_translation_array(dims)
+        # todo: use array ops
+        return self._transform_arr(arr, dims, self.project_to_stack)
 
-        return (arr - translation_arr) / resolution_arr
-
-    def stack_to_project_coord(self, dim, stack_coord):
-        return stack_coord * self.resolution[dim] + self.translation[dim]
+    def stack_to_project_coord(self, stack_dim, stack_coord):
+        proj_dim = self._s2p[stack_dim]
+        return self._s2p[stack_dim], stack_coord * self.resolution[proj_dim] + self.translation[proj_dim]
 
     def stack_to_project(self, stack_coords):
         """
@@ -466,29 +499,40 @@ class CoordinateTransformer(object):
         dict
             coordinates transformed into project / real space
         """
-        return {dim: self.stack_to_project_coord(dim, stack_coord) for dim, stack_coord in stack_coords.items()}
+        return dict(
+            self.stack_to_project_coord(stack_dim, stack_coord)
+            for stack_dim, stack_coord in stack_coords.items()
+        )
 
     def stack_to_project_array(self, arr, dims='xyz'):
         """
         Take an array of points in stack space and transform them into project space.
+
+        Currently, this is a convenience method only; it does not yet utilise array operations.
 
         Parameters
         ----------
         arr : array-like
             M by N array containing M coordinates in stack / voxel space in N dimensions
         dims : array-like or str
-            Order of dimensions in columns, default (x, y, z)
+            Order of dimensions in columns, default 'xyz'
 
         Returns
         -------
         np.ndarray
             M by N array containing M coordinates in project / real space in N dimensions
         """
-        arr = np.array(arr)
-        resolution_arr = self._get_resolution_array(dims)
-        translation_arr = self._get_translation_array(dims)
+        # todo: use array ops
+        return self._transform_arr(arr, dims, self.stack_to_project)
 
-        return arr * resolution_arr + translation_arr
+    def _transform_arr(self, arr, dims, fn):
+        output = []
+        for row in arr:
+            row_d = dict(zip(dims, row))
+            transformed = fn(row_d)
+            output.append([transformed[dim] for dim in dims])
+
+        return np.asarray(output)
 
     def stack_to_scaled_coord(self, dim, stack_coord, tgt_zoom, src_zoom=0):
         """
