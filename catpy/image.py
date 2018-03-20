@@ -845,6 +845,9 @@ class ImageFetcher(object):
         if roi_mode == ROIMode.PROJECT:
             if not isinstance(self.stack, ProjectStack):
                 raise ValueError("ImageFetcher's stack is not related to a project, cannot use ROIMode.PROJECT")
+            if self.stack.orientation.lower() != 'xy':
+                warn("Stack orientation differs from project: returned array's orientation will reflect"
+                     "stack orientation, not project orientation")
             roi_tgt = self.coord_trans.project_to_stack_array(roi_tgt, dims=self.target_orientation)
             roi_mode = ROIMode.STACK
 
@@ -868,6 +871,9 @@ class ImageFetcher(object):
                 - `roi` is given in project space
                 - `zoom_level` specifies the zoom level of returned data
                 - Returned array may overflow desired ROI by < 1 scaled pixel per side
+                - Data will be reoriented from stack space/orientation into the `target_orientation` without
+                  going via project space: as such, for stacks with orientation other than 'xy', the output
+                  data will not be in the same orientation as the project-spaced query.
             ROIMode.STACK ('stack'):
                 - Default option
                 - `roi` is given in unscaled stack space (i.e. pixels at zoom level 0)
