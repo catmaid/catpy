@@ -9,4 +9,4 @@ __version__ = '0.1.0'
 __all__ = ['client']
 
 
-from catpy.client import CatmaidClient, CoordinateTransformer  # noqa
+from catpy.client import CatmaidClient, CoordinateTransformer, CatmaidUrl  # noqa

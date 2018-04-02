@@ -34,16 +34,21 @@ def test_property_passthrough(catmaid_mock, ConcreteApp):
     assert app.base_url == catmaid_mock.base_url == BASE_URL
 
 
-def test_method_passthrough(catmaid_mock, ConcreteApp):
+def test_get_post_call_fetch(catmaid_mock, ConcreteApp):
+    app = ConcreteApp(catmaid_mock)
+    rel_url = 'potato'
+
+    app.get(rel_url, params=None, raw=False)
+    catmaid_mock.fetch.assert_called_with(rel_url, method='GET', data=None, raw=False)
+
+    app.post(rel_url, data=None, raw=False)
+    catmaid_mock.fetch.assert_called_with(rel_url, method='POST', data=None, raw=False)
+
+
+def test_fetch_passthrough(catmaid_mock, ConcreteApp):
     app = ConcreteApp(catmaid_mock)
     args = (1, 2)
     kwargs = {'a': 1}
-
-    app.get(*args, **kwargs)
-    catmaid_mock.get.assert_called_with(*args, **kwargs)
-
-    app.post(*args, **kwargs)
-    catmaid_mock.post.assert_called_with(*args, **kwargs)
 
     app.fetch(*args, **kwargs)
     catmaid_mock.fetch.assert_called_with(*args, **kwargs)
