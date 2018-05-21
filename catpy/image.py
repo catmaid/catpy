@@ -436,7 +436,8 @@ class ProjectStack(Stack):
         """
         stack = cls(
             stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'], stack_info['canary_location']
+            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'],
+            stack_info['canary_location']
         )
         mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
 
