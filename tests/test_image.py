@@ -6,6 +6,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 from concurrent.futures import Future
+from requests import HTTPError
 
 try:
     import mock
@@ -508,7 +509,7 @@ def test_imagefetcher_set_mirror_title_warns_no_match(min_fetcher):
 
 def test_imagefetcher_set_mirror_title_warns_too_many(min_fetcher):
     min_fetcher.stack.mirrors.append(StackMirror(IMAGE_BASE, 1, 1, TILE_SOURCE_TYPE, 'png', 'title0', 10))
-    with pytest.warns(UserWarning, match='does not exist'):
+    with pytest.warns(UserWarning, match='ore than one'):
         min_fetcher.mirror = 'title0'
     assert min_fetcher._mirror == min_fetcher.stack.mirrors[0]
 
@@ -746,3 +747,17 @@ def test_imagefetcher_get_wrappers(min_fetcher, space):
     min_fetcher.get = mock.Mock()
     getattr(min_fetcher, 'get_{}_space'.format(space.value))('roi', 'zoom_level')
     min_fetcher.get.assert_called_with('roi', space, 'zoom_level', None)
+
+
+def test_404_handled_correctly(min_fetcher):
+    idx = TileIndex(0, 0, 0, 0, 100, 100)
+    min_fetcher._session.get = mock.Mock(side_effect=HTTPError(response=mock.Mock(status_code=404)))
+    with mock.patch('catpy.image.response_to_array', mock.Mock()):
+        tile = min_fetcher._fetch(idx)
+    assert tile.shape == (100, 100)
+    assert (tile == 0).sum() == tile.size
+
+
+@pytest.mark.xfail(reason="404 handling not implemented for threaded fetcher")
+def test_404_handled_correctly_threaded(min_fetcher):
+    assert False
