@@ -10,3 +10,5 @@ __all__ = ['client']
 
 
 from catpy.client import CatmaidClient, CoordinateTransformer, CatmaidUrl  # noqa
+from catpy import image
+from catpy import export
