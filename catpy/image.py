@@ -392,6 +392,12 @@ class Stack(object):
 
 
 class ProjectStack(Stack):
+    orientation_choices = {
+        0: "xy",
+        1: "xz",
+        2: "zy",
+    }
+
     def __init__(self, dimension, translation, resolution, orientation, broken_slices=None, canary_location=None):
         """
         Representation of an image stack as it pertains to a CATMAID project
@@ -430,7 +436,7 @@ class ProjectStack(Stack):
         """
         stack = cls(
             stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            stack_info['orientation'], stack_info['broken_slices'], stack_info['canary_location']
+            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'], stack_info['canary_location']
         )
         mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
 
