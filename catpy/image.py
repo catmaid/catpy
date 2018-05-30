@@ -5,6 +5,8 @@ from __future__ import division, unicode_literals
 import logging
 from io import BytesIO
 from collections import OrderedDict
+
+from requests import HTTPError
 from timeit import timeit
 import itertools
 from warnings import warn
@@ -392,6 +394,12 @@ class Stack(object):
 
 
 class ProjectStack(Stack):
+    orientation_choices = {
+        0: "xy",
+        1: "xz",
+        2: "zy",
+    }
+
     def __init__(self, dimension, translation, resolution, orientation, broken_slices=None, canary_location=None):
         """
         Representation of an image stack as it pertains to a CATMAID project
@@ -430,7 +438,8 @@ class ProjectStack(Stack):
         """
         stack = cls(
             stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            stack_info['orientation'], stack_info['broken_slices'], stack_info['canary_location']
+            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'],
+            stack_info['canary_location']
         )
         mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
 
@@ -670,6 +679,12 @@ class ImageFetcher(object):
             raise ValueError('Unknown dimension of volume: should be 2D or 3D')
         return np.moveaxis(arr, (0, 1, 2), self._dimension_mappings)
 
+    def _make_empty_tile(self, width, height=None):
+        height = height or width
+        tile = np.empty((height, width), dtype=np.uint8)
+        tile.fill(self.cval)
+        return tile
+
     def _get_tile(self, tile_index):
         """
         Get the tile from the cache, handle broken slices, or fetch.
@@ -689,9 +704,7 @@ class ImageFetcher(object):
 
         if tile_index.depth in self.stack.broken_slices:
             if self.broken_slice_handling == BrokenSliceHandling.FILL and self.cval is not None:
-                tile = np.empty((tile_index.width, tile_index.height))
-                tile.fill(self.cval)
-                return tile
+                return self._make_empty_tile(tile_index.width, tile_index.height)
             else:
                 raise NotImplementedError(
                     "'fill' with a non-None cval is the only implemented broken slice handling mode"
@@ -813,7 +826,14 @@ class ImageFetcher(object):
         Future of np.ndarray in source orientation
         """
         url = self.mirror.generate_url(tile_index)
-        return response_to_array(self._session.get(url, timeout=self.timeout))
+        try:
+            return response_to_array(self._session.get(url, timeout=self.timeout))
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                logger.warning("Tile not found at %s (error 404), returning blank tile", url)
+                return self._make_empty_tile(tile_index.width, tile_index.height)
+            else:
+                raise
 
     def _reorient_roi_tgt_to_src(self, roi_tgt):
         return roi_tgt[:, self._dimension_mappings]
