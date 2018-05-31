@@ -1,23 +1,23 @@
 language: python
 python:
-    - 3.6
-    - 3.5
-    - 3.4
-    - 2.7
+- 3.6
+- 3.5
+- 3.4
+- 2.7
 notifications:
   email: false
 install: pip install tox-travis coverage==4.3.4 codeclimate-test-reporter
 script: tox
 after_success:
-    - test $TRAVIS_PYTHON_VERSION = "2.7" &&
-      CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3 codeclimate-test-reporter --file .coverage.py27
+- test $TRAVIS_PYTHON_VERSION = "3.6" && CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3
+  codeclimate-test-reporter --file .coverage.py36
 deploy:
   on:
     repo: catmaid/catpy
-    python: 2.7
+    python: 3.6
     tags: true
   distributions: sdist bdist_wheel
   password:
-    secure: D0Z6YFFY6cOPwYeEXh7XHt9K4/cVYk/oWxDa5oMHfTFvNl0T/qIxAECMuNp7sEIvRGT/sOwDBnH3UuBOU50QnJkeALTcbwkeVdsVmRaK9q7siUIJTkCi8ov1HNe6NS47Px4bCuz64WkvYw7lvwPMdrzP0yr7DwSkk+bo1f6SGxpANWihU1lJB7DixCJB+yy+EB+hfM19a/p9SHSYM793qsKFZ1dq8u72yWNvmhkPAKb7HOEtCM9pbzeQdDklOkbR+AUxj2EvtbbQYCow2Ymgvd5RRR1KZajuOTTBwgnJIiirBtO6j6B5dmBqgRdSNNWRCx16RzLny6b64P0xg9E8gSFtYLg7M+BBbnkJ11WrzyPD4KVaBZAaPokrY/fP0xFgQ4++brZdziy27eA8B9a71+3sS7Ilq3CaLBiaIc+Vcn/h3gqOPTCn2dcazN3ZwAKr+YGqpfsuAx/dtTmelLEovGt7bvjl/G5LxTUfgkA9JL2JyZmgOIJbEePxW7xoyASh2t7u6z4+s+hrlIJC50iPtNh+Q9Bk/JfcSKCSKkZDdCszlK4MV/WSEC82qutLXHkCHPWoWeHRp9I2X8pG2+mzuvQdBtGfbEdqA5JSLw63g5dyrzmK42TEzmAtOGzxBPfBjWXkNEZLkcb2qmJcZmtiY1YPBXsWf88IvZ4cV1Avz9E=
+    secure: FoRzNQ9+a0/gjbmJ71G2sN9jRtbaxxhv3TPJtJwTFAmRE7mRDj1xuksP2sSbmoCc1m1zZtwdeMvwdhM7t/O6OLvx4QmGZwC+QPHdWuyuAbfsdUNQ/4/wPysRJjRsRPeO8gNJTsg05Ro/AxTBZABACiYexbo6bLyKRrVLUq4Ie7OxWbEmLzEjPwlQVjaiMIxVqjGoD9t4OmZLdK9URKrjnJ8XSTLkxRd5E7+T7pTWoSTL0lEpwhs11n3CUAkIFukQN3GrYpcT//TsZfBAk+zQxzyCLcYx+nJjFbOb3vOzySVBB0hHuQEQvQJxj7ufjAVjge4COUXX5aRKNmVz++qEs16FTBs6e+y9kcZyJeg7eErmdnmtumr0DHDxIZQtZ2jwu9CCioTLt7LkWyIbCJ3V8+Mbken/psmoegYX3R+0D3/nVEwfAvKm2GgmL6mUSO1sBwYPM6akcb5eLHPwWQQhn9Drh8OifzD9pbDVcq9tge1IiPGMM9118j2Wy5rC7FVFHKIF7BUNJ7IwHlfjTfhrdt/wtlJ+qSi6QIKJygwHHNscn75NzU3Psp1lrvDxdiC3cq4ThbBxjv8EMOKBWWxV5kWcV9YLWxm7LzfOSVIAw1v1We4DjGM+FdVetGQnPOXMepwkh+UsiPLMgD4LZWvtQXkGaLN/6b02QiIhQWHOaxo=
   provider: pypi
-  user: aschampion
+  user: clbarnes
