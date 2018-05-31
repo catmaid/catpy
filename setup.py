@@ -2,13 +2,21 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup
-import sys
+import os
 
-with open('README.rst') as readme_file:
+here = os.path.abspath(os.path.dirname(__file__))
+
+with open(os.path.join(here, 'README.rst')) as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
+with open(os.path.join(here, 'HISTORY.rst')) as history_file:
     history = history_file.read()
+
+with open(os.path.join(here, 'catpy', 'version.py')) as f:
+    exec(f.read())
+
+with open(os.path.join(here, 'catpy', 'author.py')) as f:
+    exec(f.read())
 
 requirements = [
     'enum34>=1.1; python_version < "3.4"',
@@ -27,19 +35,16 @@ setup_requirements = [
 
 test_requirements = [
     'pytest>=3',
-    "mock==2.0.0; python_version < '3.6'"
+    "mock>=2; python_version < '3.6'"
 ]
-
-if sys.version_info < (3, 6):
-    test_requirements.append('mock>=2')
 
 setup(
     name='catpy',
-    version='0.1.0',
+    version=__version__,
     description="Python client for the CATMAID API",
     long_description=readme + '\n\n' + history,
-    author="Andrew S. Champion",
-    author_email='andrew.champion@gmail.com',
+    author=__author__,
+    author_email=__email__,
     url='https://github.com/catmaid/catpy',
     packages=[
         'catpy',
