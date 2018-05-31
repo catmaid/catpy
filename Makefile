@@ -23,6 +23,10 @@ endef
 export PRINT_HELP_PYSCRIPT
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
+module = catpy
+version_file = $(module)/version.py
+current_version := $(shell grep -Po "\d+\.\d+\.\d+" $(version_file))
+
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
@@ -69,14 +73,15 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/modules.rst
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
+
+viewdocs: docs
 	$(BROWSER) docs/_build/html/index.html
 
-servedocs: docs ## compile the docs watching for changes
+servedocs: viewdocs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
-release: clean ## package and upload a release
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+release: dist ## package and upload a release
+	twine upload dist/*
 
 dist: clean ## builds source and wheel package
 	python setup.py sdist
@@ -85,3 +90,16 @@ dist: clean ## builds source and wheel package
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
+
+install-dev: clean
+	pip install -r requirements/dev.txt
+	pip install -e .
+
+version-patch: docs
+	bumpversion --current-version $(current_version) patch $(module)/version.py --commit --tag
+
+version-minor: docs
+	bumpversion --current-version $(current_version) minor $(module)/version.py --commit --tag
+
+version-major: docs
+	bumpversion --current-version $(current_version) major $(module)/version.py --commit --tag
