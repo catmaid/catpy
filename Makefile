@@ -96,10 +96,10 @@ install-dev: clean
 	pip install -e .
 
 version-patch: docs
-	bumpversion --current-version $(current_version) patch $(module)/version.py --commit --tag
+	bumpversion --current-version $(current_version) patch
 
 version-minor: docs
-	bumpversion --current-version $(current_version) minor $(module)/version.py --commit --tag
+	bumpversion --current-version $(current_version) minor
 
 version-major: docs
-	bumpversion --current-version $(current_version) major $(module)/version.py --commit --tag
+	bumpversion --current-version $(current_version) major
