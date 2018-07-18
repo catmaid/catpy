@@ -49,7 +49,11 @@ def make_url(base_url, *args):
     return base_url
 
 
-class WrappedCatmaidException(Exception):
+class CatmaidException(Exception):
+    pass
+
+
+class WrappedCatmaidException(CatmaidException):
     exception_keys = frozenset(('traceback', 'error', 'type'))
     spacer = '    '
 
