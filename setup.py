@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup
+from itertools import chain
 import os
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -38,6 +39,12 @@ test_requirements = [
     "mock>=2; python_version < '3.6'"
 ]
 
+extra_requirements = {
+    "mesh": ["meshio>=2.0.4"]
+}
+
+extra_requirements["full"] = sorted(chain.from_iterable(extra_requirements.values()))
+
 setup(
     name='catpy',
     version=__version__,
@@ -71,6 +78,7 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
     setup_requires=setup_requirements,
+    extras_require=extra_requirements,
     test_suite='tests',
     tests_require=test_requirements
 )
