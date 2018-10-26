@@ -19,15 +19,23 @@ with open(os.path.join(here, 'catpy', 'author.py')) as f:
     exec(f.read())
 
 requirements = [
-    'enum34>=1.1; python_version < "3.4"',
-    'futures>=3.2; python_version < "3.3"',
-    'networkx==1.11',
+    "enum34>=1.1; python_version < '3.4'",
+    "futures>=3.2; python_version < '3.3'",
+    'networkx>=1.11',
     'numpy>=1.12',
     'Pillow>=5.0',
     'requests>=2.14',
     'requests-futures>=0.9',
     'six>=1.10'
 ]
+
+# environment variable can force a specific networkx requirement, for testing purposes (see tox.ini)
+nx_version = os.environ.get('CATPY_NX')
+if nx_version:
+    requirements = [
+        r if not r.startswith('networkx') else "networkx" + nx_version
+        for r in requirements
+    ]
 
 setup_requirements = [
     'pytest-runner>=2.11',
@@ -68,6 +76,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
     setup_requires=setup_requirements,

@@ -1,10 +1,55 @@
 # -*- coding: utf-8 -*-
 
 from warnings import warn
+from copy import deepcopy
 
+import networkx as nx
 from networkx.readwrite import json_graph
 
 from catpy.client import CatmaidClientApplication
+
+
+NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split('.'))
+
+
+err_msg = (
+    "Tried to treat the edge's source/target fields as indices into the list of nodes, but failed. "
+    "See issue #26 [1]. "
+    "Has CATMAID upgraded to networkx 2.x? [2]\n\n"
+    "[1]: https://github.com/catmaid/catpy/issues/26\n"
+    "[2]: https://github.com/catmaid/CATMAID/blob/master/django/requirements.txt"
+)
+
+
+def convert_nodelink_data(jso):
+    """NetworkX serialises graphs differently in v1.x and v2.x.
+
+    This converts v1-style data (as emitted by CATMAID) to v2-style data.
+
+    See issue #26 https://github.com/catmaid/catpy/issues/26
+
+    Parameters
+    ----------
+    jso : dict
+
+    Returns
+    -------
+    dict
+    """
+    if NX_VERSION_INFO < (2, 0):
+        warn(
+            "You are converting networkx v1-style JSON (emitted by CATMAID) to v2-style JSON,"
+            " but you are using networkx v1"
+        )
+
+    out = deepcopy(jso)
+    for edge in out["links"]:
+        for label in ["source", "target"]:
+            try:
+                edge[label] = out["nodes"][edge[label]]["id"]
+            except (KeyError, IndexError):
+                raise RuntimeError(err_msg)
+    return out
 
 
 class ExportWidget(CatmaidClientApplication):
@@ -28,15 +73,20 @@ class ExportWidget(CatmaidClientApplication):
 
     def get_connector_archive(self, *args, **kwargs):
         """Not implemented: requires an async job"""
-        raise NotImplementedError
+        raise NotImplementedError("Requires an async job")
 
     def get_treenode_archive(self, *args, **kwargs):
         """Not implemented: requires an async job"""
-        raise NotImplementedError
+        raise NotImplementedError("Requires an async job")
 
     def get_networkx_dict(self, *skeleton_ids):
         """
         Get the data for a networkx graph of the given skeletons in node-link format.
+
+        In networkx 1.x, as used by CATMAID and therefore returned by this method,
+        "source" and "target" in the dicts in "links" refer to nodes by their indices in the "nodes" array.
+
+        See ``convert_nodelink_data`` function to convert into networkx 2.x-compatible format.
 
         https://networkx.readthedocs.io/en/networkx-1.11/reference/generated/networkx.readwrite.json_graph.node_link_data.html
 
@@ -63,6 +113,8 @@ class ExportWidget(CatmaidClientApplication):
         networkx.MultiDiGraph
         """
         data = self.get_networkx_dict(*skeleton_ids)
+        if NX_VERSION_INFO >= (2, 0):
+            data = convert_nodelink_data(data)
         return json_graph.node_link_graph(data, directed=True)
 
     def get_neuroml(self, skeleton_ids, skeleton_inputs=tuple()):
