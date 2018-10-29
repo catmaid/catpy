@@ -13,10 +13,21 @@ import requests
 import numpy as np
 
 
+class ConnectorRelation(IntEnum):
+    """Enum describing the type of a treenode-connector relationship, i.e. the treenode is ____ to the connector"""
+    PRESYNAPTIC_TO = 0
+    POSTSYNAPTIC_TO = 1
+    GAPJUNCTION_WITH = 2
+    OTHER = -1
+
+
 class StackOrientation(IntEnum):
     XY = 0
     XZ = 1
     ZY = 2
+
+    def __str__(self):
+        return self.name.lower()
 
 
 orientation_strs = {
