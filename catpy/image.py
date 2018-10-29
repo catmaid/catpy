@@ -108,6 +108,17 @@ class TileSourceType(IntEnum):
     FLIXSERVER = 9
     H2N5_TILES = 10
 
+    def format(self, **kwargs):
+        try:
+            format_url = format_urls[self]
+        except KeyError:
+            raise ValueError(
+                "{} is not supported by TileFetcher, supported types are below:\n{}".format(
+                    self, '\n'.join('\t' + str(k) for k in sorted(format_urls))
+                )
+            )
+        return format_url.format(**kwargs)
+
 
 format_urls = {
     TileSourceType.FILE_BASED: '{image_base}{{depth}}/{{row}}_{{col}}_{{zoom_level}}.{file_extension}',
@@ -273,7 +284,7 @@ class StackMirror(object):
         self.title = str(title)
         self.position = int(position)
 
-        self.format_url = format_urls[self.tile_source_type].format(**self.__dict__)
+        self.format_url = self.tile_source_type.format(**self.__dict__)
 
     def generate_url(self, tile_index):
         """

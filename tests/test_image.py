@@ -237,7 +237,7 @@ def test_stackmirror_corrects_file_extension():
     assert mirror_dot.file_extension == mirror_no_dot.file_extension == 'png'
 
 
-@pytest.mark.parametrize('tile_source_type', list(TileSourceType))
+@pytest.mark.parametrize('tile_source_type', format_urls.keys())
 def test_stackmirror_formats_url(tile_source_type):
     mirror = StackMirror(IMAGE_BASE, 256, 256, tile_source_type, 'png')
     tile_idx = TileIndex(0, 0, 0, 0, 256, 256)
