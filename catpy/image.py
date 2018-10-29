@@ -96,11 +96,17 @@ DEFAULT_ROI_MODE = ROIMode.STACK
 
 
 class TileSourceType(IntEnum):
+    """https://catmaid.readthedocs.io/en/stable/tile_sources.html"""
     FILE_BASED = 1
+    REQUEST_QUERY = 2
+    HDF5 = 3
     FILE_BASED_WITH_ZOOM_DIRS = 4
     DIR_BASED = 5
+    DVID_IMAGEBLK = 6
     RENDER_SERVICE = 7
+    DVID_IMAGETILE = 8
     FLIXSERVER = 9
+    H2N5_TILES = 10
 
 
 format_urls = {
