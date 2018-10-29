@@ -4,7 +4,6 @@ from __future__ import division, unicode_literals
 
 import json
 import webbrowser
-from functools import wraps
 from abc import ABCMeta, abstractmethod
 from warnings import warn
 
@@ -315,54 +314,6 @@ class CatmaidClient(AbstractCatmaidClient):
             return response.json()
         else:
             return response.text
-
-
-@add_metaclass(ABCMeta)
-class CatmaidClientApplication(AbstractCatmaidClient):
-    """
-    An application which uses the CATMAID interface. Users should subclass this when creating their own applications.
-    """
-
-    def __init__(self, catmaid_client):
-        """
-
-        Parameters
-        ----------
-        catmaid_client : CatmaidClient
-        """
-        self._catmaid = catmaid_client
-
-    @property
-    def base_url(self):
-        return self._catmaid.base_url
-
-    @property
-    def project_id(self):
-        return self._catmaid.project_id
-
-    @wraps(CatmaidClient.fetch)
-    def fetch(self, *args, **kwargs):
-        return self._catmaid.fetch(*args, **kwargs)
-
-    @classmethod
-    def from_json(cls, credentials, *args, **kwargs):
-        """
-        Return a CatmaidClientApplication instance whose underlying CatmaidClient object is instantiated from the JSON
-        file as per its own from_json method.
-
-        Parameters
-        ----------
-        path : str
-            Path to the JSON credentials file
-        args, kwargs
-            Arguments passed to constructor of concrete subclass
-
-        Returns
-        -------
-        CatmaidClient
-            Instance of the API, authenticated with
-        """
-        return cls(CatmaidClient.from_json(credentials), *args, **kwargs)
 
 
 class CoordinateTransformer(object):
@@ -682,7 +633,7 @@ class CatmaidUrl(object):
 
         Parameters
         ----------
-        catmaid_client : CatmaidClient or CatmaidClientApplication
+        catmaid_client : CatmaidClient or catpy.applications.base.CatmaidClientApplication
         stack_group_id : int
         stack_id : int
         scale : float

@@ -21,6 +21,7 @@ with open(os.path.join(here, 'catpy', 'author.py')) as f:
 requirements = [
     "enum34>=1.1; python_version < '3.4'",
     "futures>=3.2; python_version < '3.3'",
+    "backports.functools_lru_cache>=1.5; python_version < '3.3'",
     'networkx>=1.11',
     'numpy>=1.12',
     'Pillow>=5.0',

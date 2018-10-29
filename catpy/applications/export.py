@@ -6,7 +6,7 @@ from copy import deepcopy
 import networkx as nx
 from networkx.readwrite import json_graph
 
-from catpy.client import CatmaidClientApplication
+from catpy.applications.base import CatmaidClientApplication
 
 
 NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split('.'))
@@ -53,6 +53,7 @@ def convert_nodelink_data(jso):
 
 
 class ExportWidget(CatmaidClientApplication):
+
     def get_swc(self, skeleton_id, linearize_ids=False):
         """
         Get a single skeleton in SWC format.
@@ -67,8 +68,8 @@ class ExportWidget(CatmaidClientApplication):
         str
         """
         return self.get(
-            (self.project_id, 'skeleton', skeleton_id, 'swc'),
-            {'linearize_ids': 'true' if linearize_ids else 'false'}
+            (self.project_id, "skeleton", skeleton_id, "swc"),
+            {"linearize_ids": "true" if linearize_ids else "false"},
         )
 
     def get_connector_archive(self, *args, **kwargs):
@@ -98,7 +99,10 @@ class ExportWidget(CatmaidClientApplication):
         -------
         dict
         """
-        return self.post((self.project_id, 'graphexport', 'json'), data={'skeleton_list': list(skeleton_ids)})
+        return self.post(
+            (self.project_id, "graphexport", "json"),
+            data={"skeleton_list": list(skeleton_ids)},
+        )
 
     def get_networkx(self, *skeleton_ids):
         """
@@ -138,15 +142,17 @@ class ExportWidget(CatmaidClientApplication):
             NeuroML output string
         """
 
-        data = {'skids': list(skeleton_ids)}
+        data = {"skids": list(skeleton_ids)}
 
         if skeleton_inputs:
             if len(skeleton_ids) > 1:
-                warn('More than one skeleton ID was selected: ignoring skeleton input constraints')
+                warn(
+                    "More than one skeleton ID was selected: ignoring skeleton input constraints"
+                )
             else:
-                data['inputs'] = list(skeleton_inputs)
+                data["inputs"] = list(skeleton_inputs)
 
-        return self.post((self.project_id, 'neuroml', 'neuroml_level3_v181'), data=data)
+        return self.post((self.project_id, "neuroml", "neuroml_level3_v181"), data=data)
 
     def get_treenode_and_connector_geometry(self, *skeleton_ids):
         """
@@ -188,17 +194,16 @@ class ExportWidget(CatmaidClientApplication):
 
         for skeleton_id in skeleton_ids:
 
-            data = self.get('{}/{}/1/0/compact-skeleton'.format(self.project_id, skeleton_id))
+            data = self.get(
+                "{}/{}/1/0/compact-skeleton".format(self.project_id, skeleton_id)
+            )
 
-            skeleton = {
-                'treenodes': dict(),
-                'connectors': dict()
-            }
+            skeleton = {"treenodes": dict(), "connectors": dict()}
 
             for treenode in data[0]:
-                skeleton['treenodes'][int(treenode[0])] = {
-                    'location': treenode[3:6],
-                    'parent_id': None if treenode[1] is None else int(treenode[1])
+                skeleton["treenodes"][int(treenode[0])] = {
+                    "location": treenode[3:6],
+                    "parent_id": None if treenode[1] is None else int(treenode[1]),
                 }
 
             for connector in data[1]:
@@ -206,15 +211,14 @@ class ExportWidget(CatmaidClientApplication):
                     continue
 
                 conn_id = int(connector[1])
-                if conn_id not in skeleton['connectors']:
-                    skeleton['connectors'][conn_id] = {
-                        'presynaptic_to': [],
-                        'postsynaptic_to': []
+                if conn_id not in skeleton["connectors"]:
+                    skeleton["connectors"][conn_id] = {
+                        "presynaptic_to": [], "postsynaptic_to": []
                     }
 
-                skeleton['connectors'][conn_id]['location'] = connector[3:6]
-                relation = 'postsynaptic_to' if connector[2] == 1 else 'presynaptic_to'
-                skeleton['connectors'][conn_id][relation].append(connector[0])
+                skeleton["connectors"][conn_id]["location"] = connector[3:6]
+                relation = "postsynaptic_to" if connector[2] == 1 else "presynaptic_to"
+                skeleton["connectors"][conn_id][relation].append(connector[0])
 
             skeletons[int(skeleton_id)] = skeleton
 

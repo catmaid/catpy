@@ -1,5 +1,6 @@
 enum34==1.1.6; python_version < "3.4"
 futures==3.2.0; python_version < "3.3"
+backports.functools_lru_cache==1.5; python_version < "3.3"
 networkx==2.2
 numpy==1.12.1
 Pillow==5.0.0

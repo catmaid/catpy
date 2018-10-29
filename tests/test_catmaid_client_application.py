@@ -5,8 +5,8 @@ except ImportError:
 
 import pytest
 
-from catpy.client import CatmaidClient, CatmaidClientApplication
-
+from catpy.client import CatmaidClient
+from catpy.applications.base import CatmaidClientApplication
 
 PROJECT_ID = 10
 BASE_URL = 'http://not-catmaid.org'
