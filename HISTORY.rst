@@ -6,6 +6,7 @@ In progress
 -----------
 
 * Allow networkx 2+ to be used
+* Add NameResolver application
 
 
 0.2.0 (2018-05-30)
