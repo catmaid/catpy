@@ -7,6 +7,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 
 from catpy.applications.base import CatmaidClientApplication
+from catpy.client import ConnectorRelation
 
 
 NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split('.'))
@@ -191,6 +192,7 @@ class ExportWidget(CatmaidClientApplication):
         """
 
         skeletons = dict()
+        warnings = set()
 
         for skeleton_id in skeleton_ids:
 
@@ -207,19 +209,34 @@ class ExportWidget(CatmaidClientApplication):
                 }
 
             for connector in data[1]:
-                if connector[2] not in [0, 1]:
+                try:
+                    relation = ConnectorRelation(connector[2])
+                except ValueError as e:
+                    msg = str(e)
+                    if " is not a valid " in msg:
+                        warnings.add(str(e))
+                        continue
+                    else:
+                        raise e
+
+                if not relation.is_synaptic:
                     continue
 
                 conn_id = int(connector[1])
                 if conn_id not in skeleton["connectors"]:
                     skeleton["connectors"][conn_id] = {
-                        "presynaptic_to": [], "postsynaptic_to": []
+                        str(r): [] for r in ConnectorRelation if r.is_synaptic
                     }
 
                 skeleton["connectors"][conn_id]["location"] = connector[3:6]
-                relation = "postsynaptic_to" if connector[2] == 1 else "presynaptic_to"
-                skeleton["connectors"][conn_id][relation].append(connector[0])
+                relation_name = str(relation)
+                skeleton["connectors"][conn_id][relation_name].append(connector[0])
 
             skeletons[int(skeleton_id)] = skeleton
+
+        warn(
+            "Skeleton representations contained some unknown treenode->connector relation IDs:\n\t"
+            "\n\t".join(sorted(warnings))
+        )
 
         return {"skeletons": skeletons}

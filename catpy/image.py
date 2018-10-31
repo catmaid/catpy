@@ -113,8 +113,8 @@ class TileSourceType(IntEnum):
             format_url = format_urls[self]
         except KeyError:
             raise ValueError(
-                "{} is not supported by TileFetcher, supported types are below:\n{}".format(
-                    self, '\n'.join('\t' + str(k) for k in sorted(format_urls))
+                "{} is not supported by TileFetcher, supported types are below:\n\t{}".format(
+                    self, '\n\t'.join(str(k) for k in sorted(format_urls))
                 )
             )
         return format_url.format(**kwargs)

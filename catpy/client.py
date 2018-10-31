@@ -14,11 +14,22 @@ import numpy as np
 
 
 class ConnectorRelation(IntEnum):
-    """Enum describing the type of a treenode-connector relationship, i.e. the treenode is ____ to the connector"""
+    """Enum describing the type of a treenode->connector relationship, i.e. the treenode is ____ to the connector"""
+    # todo: are these guaranteed?
     PRESYNAPTIC_TO = 0
     POSTSYNAPTIC_TO = 1
     GAPJUNCTION_WITH = 2
     OTHER = -1
+    # ABUTTING
+    # ATTACHED_TO
+    # CLOSE_TO
+
+    @property
+    def is_synaptic(self):
+        return self == type(self).PRESYNAPTIC_TO or self == type(self).POSTSYNAPTIC_TO
+
+    def __str__(self):
+        return self.name.lower()
 
 
 class StackOrientation(IntEnum):
@@ -30,11 +41,7 @@ class StackOrientation(IntEnum):
         return self.name.lower()
 
 
-orientation_strs = {
-    StackOrientation.XY: 'xy',
-    StackOrientation.XZ: 'xz',
-    StackOrientation.ZY: 'zy'
-}
+orientation_strs = {o: str(o) for o in StackOrientation}
 
 
 def make_url(base_url, *args):
