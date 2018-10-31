@@ -23,7 +23,7 @@ import requests
 from requests_futures.sessions import FuturesSession
 
 from catpy import CoordinateTransformer
-
+from catpy.client import StackOrientation
 
 logger = logging.getLogger()
 
@@ -438,7 +438,7 @@ class ProjectStack(Stack):
         super(ProjectStack, self).__init__(dimension, broken_slices, canary_location)
         self.translation = translation
         self.resolution = resolution
-        self.orientation = orientation
+        self.orientation = StackOrientation.from_value(orientation)
 
     @classmethod
     def from_stack_info(cls, stack_info):
@@ -455,7 +455,7 @@ class ProjectStack(Stack):
         """
         stack = cls(
             stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'],
+            stack_info['orientation'], stack_info['broken_slices'],
             stack_info['canary_location']
         )
         mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
@@ -882,7 +882,7 @@ class ImageFetcher(object):
         if roi_mode == ROIMode.PROJECT:
             if not isinstance(self.stack, ProjectStack):
                 raise ValueError("ImageFetcher's stack is not related to a project, cannot use ROIMode.PROJECT")
-            if self.stack.orientation.lower() != 'xy':
+            if self.stack.orientation != StackOrientation.XY:
                 warn("Stack orientation differs from project: returned array's orientation will reflect"
                      "stack orientation, not project orientation")
             roi_tgt = self.coord_trans.project_to_stack_array(roi_tgt, dims=self.target_orientation)

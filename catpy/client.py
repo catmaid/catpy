@@ -33,6 +33,7 @@ class ConnectorRelation(IntEnum):
 
 
 class StackOrientation(IntEnum):
+    """Can be iterated over or indexed like the lower-case string representation of the orientation"""
     XY = 0
     XZ = 1
     ZY = 2
@@ -40,8 +41,32 @@ class StackOrientation(IntEnum):
     def __str__(self):
         return self.name.lower()
 
+    @classmethod
+    def from_str(cls, s):
+        return {o.name: o for o in StackOrientation}[s.upper()]
 
-orientation_strs = {o: str(o) for o in StackOrientation}
+    @classmethod
+    def from_value(cls, value, default='xy'):
+        """Convert an int, str or StackOrientation into a StackOrientation.
+        A NoneType ``value`` will use the default orientation."""
+        if value is None:
+            value = default
+
+        if isinstance(value, string_types):
+            return cls.from_str(value)
+        elif isinstance(value, int):
+            return cls(value)
+        else:
+            raise TypeError("Cannot create a StackOrientation from {}".format(type(value).__name__))
+
+    def __iter__(self):
+        return iter(str(self))
+
+    def __getitem__(self, item):
+        return str(self)[item]
+
+    def __contains__(self, item):
+        return item in str(self)
 
 
 def make_url(base_url, *args):
@@ -352,7 +377,7 @@ class CoordinateTransformer(object):
                 StackOrientation
                 int corresponding to StackOrientation
                 'xy', 'xz', or 'zy'
-                None (reverts to default)
+                None (reverts to default 'xy')
             Default StackOrientation.XY
         scale_z : bool
             Whether or not to scale z coordinates when using stack_to_scaled* methods. Default False is recommended, but
@@ -367,7 +392,7 @@ class CoordinateTransformer(object):
         self.translation = {dim: translation.get(dim, 0) for dim in 'zyx'}
         self.scale_z = scale_z
 
-        self.orientation = self._validate_orientation(orientation)
+        self.orientation = StackOrientation.from_value(orientation)
         self.depth_dim = [dim for dim in 'zyx' if dim not in self.orientation][0]
 
         # mapping of project dimension to stack dimension, based on orientation
@@ -378,16 +403,6 @@ class CoordinateTransformer(object):
         }
         # mapping of stack dimension to project dimension, based on orientation
         self._p2s = {value: key for key, value in self._s2p.items()}
-
-    def _validate_orientation(self, orientation):
-        if orientation is None:
-            orientation = StackOrientation.XY
-        orientation = orientation_strs.get(orientation, orientation)
-        lower = orientation.lower()
-        if lower not in orientation_strs.values():
-            raise ValueError("orientation must be a StackOrientation, 'xy', 'xz', or 'zy'")
-
-        return lower
 
     @classmethod
     def from_catmaid(cls, catmaid_client, stack_id):

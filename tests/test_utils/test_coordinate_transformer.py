@@ -225,14 +225,14 @@ def test_stack_to_scaled_array(coordinate_generator, default_coord_transformer, 
 ])
 def test_can_validate_orientation_valid(orientation):
     trans = CoordinateTransformer(orientation=orientation)
-    assert trans.orientation == 'xy'
+    assert trans.orientation == StackOrientation.XY
     assert trans.depth_dim == 'z'
 
 
 @pytest.mark.parametrize('orientation,expected_exception', [
-    [3, AttributeError],
-    ['xyz', ValueError],
-    ['xc', ValueError]
+    [3, ValueError],
+    ['xyz', KeyError],
+    ['xc', KeyError]
 ])
 def test_can_validate_orientation_invalid(orientation, expected_exception):
     with pytest.raises(expected_exception):
