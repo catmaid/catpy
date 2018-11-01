@@ -7,7 +7,9 @@ python:
 notifications:
   email: false
 install: pip install tox-travis coverage==4.3.4 codeclimate-test-reporter
-script: tox
+script:
+    - tox
+    - if [ $TRAVIS_PYTHON_VERSION = "3.6" ]; then pip install black; black --check --exclude "build/|buck-out/|dist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.nox/|\.tox/|\.venv/|\.eggs/" .; fi
 after_success:
 - test $TRAVIS_PYTHON_VERSION = "3.6" && CODECLIMATE_REPO_TOKEN=5105b82f0baefc540e934fe31b30a3e05d884991340e9856a83a8f2460aa2ef3
   codeclimate-test-reporter --file .coverage.py36

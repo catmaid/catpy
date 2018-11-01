@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help
+.PHONY: clean clean-test clean-pyc clean-build docs help hooks lint
 .DEFAULT_GOAL := help
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -103,3 +103,6 @@ version-minor: docs
 
 version-major: docs
 	bumpversion --current-version $(current_version) major
+
+hooks:
+	bash hooks/install.sh

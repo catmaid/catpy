@@ -1,0 +1,17 @@
+#!/bin/bash
+
+black -q || BLACK_MSG="Are you developing on python <3.6? Non-blackened code will break travis."
+
+if [ -z ${BLACK_MSG} ]; then
+
+    for fpath in $(git diff --cached --name-only --diff-filter=ACM | grep -P "\.py")
+    do
+        black ${fpath}
+        git add ${fpath}
+    done
+
+else
+    echo ${BLACK_MSG}
+fi
+
+exec make lint

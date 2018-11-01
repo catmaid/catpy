@@ -13,3 +13,4 @@ PyYAML==3.11
 mock==2.0.0; python_version < '3.6'
 wheel==0.31
 twine==1.11
+black==18.9b0; python_version >= '3.6'

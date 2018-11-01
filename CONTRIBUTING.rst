@@ -43,3 +43,10 @@ Here's how to set up `catpy` for local development.
     $ git push origin name-of-your-bugfix-or-feature
 
 7. Submit a pull request through the GitHub website.
+
+Code standards
+--------------
+
+- Follow PEP8.
+- Run flake8 frequently (travis will fail if this does)
+- Format your code with ``black`` (develop on python >=3.6)
