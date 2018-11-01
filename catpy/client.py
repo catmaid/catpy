@@ -20,9 +20,9 @@ class StackOrientation(IntEnum):
 
 
 orientation_strs = {
-    StackOrientation.XY: 'xy',
-    StackOrientation.XZ: 'xz',
-    StackOrientation.ZY: 'zy'
+    StackOrientation.XY: "xy",
+    StackOrientation.XZ: "xz",
+    StackOrientation.ZY: "zy",
 }
 
 
@@ -41,16 +41,16 @@ def make_url(base_url, *args):
     """
     for arg in args:
         arg_str = str(arg)
-        joiner = '' if base_url.endswith('/') else '/'
-        relative = arg_str[1:] if arg_str.startswith('/') else arg_str
+        joiner = "" if base_url.endswith("/") else "/"
+        relative = arg_str[1:] if arg_str.startswith("/") else arg_str
         base_url = requests.compat.urljoin(base_url + joiner, relative)
 
     return base_url
 
 
 class WrappedCatmaidException(Exception):
-    exception_keys = frozenset(('traceback', 'error', 'type'))
-    spacer = '    '
+    exception_keys = frozenset(("traceback", "error", "type"))
+    spacer = "    "
 
     def __init__(self, message, response):
         """
@@ -65,27 +65,28 @@ class WrappedCatmaidException(Exception):
         super(WrappedCatmaidException, self).__init__(message)
         self.msg = message
         data = response.json()
-        self.traceback = data['traceback']
-        self.type = data['type']
-        self.error = data['error']
+        self.traceback = data["traceback"]
+        self.type = data["type"]
+        self.error = data["error"]
 
     def __str__(self):
-        return '\n'.join([
-                    super(WrappedCatmaidException, self).__str__(),
-                    self.spacer + 'Response contained traceback (most recent call last):'
-                ] + [
-                    self.spacer + line for line in self.traceback.split('\n')
-                ] + [
-                    '{}{}: {}'.format(self.spacer, self.type, self.error)
-                ]
-            )
+        return "\n".join(
+            [
+                super(WrappedCatmaidException, self).__str__(),
+                self.spacer + "Response contained traceback (most recent call last):",
+            ]
+            + [self.spacer + line for line in self.traceback.split("\n")]
+            + ["{}{}: {}".format(self.spacer, self.type, self.error)]
+        )
 
     @classmethod
     def raise_on_error(cls, response):
-        if response.headers.get('content-type') == 'application/json':
+        if response.headers.get("content-type") == "application/json":
             data = response.json()
             if isinstance(data, dict) and cls.exception_keys.issubset(data):
-                raise cls('Received error response from {}'.format(response.url), response)
+                raise cls(
+                    "Received error response from {}".format(response.url), response
+                )
 
 
 @add_metaclass(ABCMeta)
@@ -118,7 +119,7 @@ class AbstractCatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='GET', data=params, raw=raw, **kwargs)
+        return self.fetch(relative_url, method="GET", data=params, raw=raw, **kwargs)
 
     def post(self, relative_url, data=None, raw=False, **kwargs):
         """
@@ -142,10 +143,10 @@ class AbstractCatmaidClient(object):
         dict or str
             Data returned from CATMAID: type depends on the 'raw' parameter.
         """
-        return self.fetch(relative_url, method='POST', data=data, raw=raw, **kwargs)
+        return self.fetch(relative_url, method="POST", data=data, raw=raw, **kwargs)
 
     @abstractmethod
-    def fetch(self, relative_url, method='GET', data=None, raw=False, **kwargs):
+    def fetch(self, relative_url, method="GET", data=None, raw=False, **kwargs):
         pass
 
 
@@ -158,7 +159,9 @@ class CatmaidClient(AbstractCatmaidClient):
     different interfaces.
     """
 
-    def __init__(self, base_url, token=None, auth_name=None, auth_pass=None, project_id=None):
+    def __init__(
+        self, base_url, token=None, auth_name=None, auth_pass=None, project_id=None
+    ):
         """
         Instantiate CatmaidClient object for handling requests to a CATMAID server.
 
@@ -218,7 +221,7 @@ class CatmaidClient(AbstractCatmaidClient):
         CatmaidClient
             Reference to the same, now-authenticated CatmaidClient instance
         """
-        self._session.headers['X-Authorization'] = 'Token ' + token
+        self._session.headers["X-Authorization"] = "Token " + token
         return self
 
     def _make_request_url(self, arg):
@@ -267,14 +270,14 @@ class CatmaidClient(AbstractCatmaidClient):
                 credentials = json.load(f)
 
         return cls(
-            credentials['base_url'],
-            credentials.get('token'),
-            credentials.get('auth_name'),
-            credentials.get('auth_pass'),
-            credentials.get('project_id')
+            credentials["base_url"],
+            credentials.get("token"),
+            credentials.get("auth_name"),
+            credentials.get("auth_pass"),
+            credentials.get("project_id"),
         )
 
-    def fetch(self, relative_url, method='GET', data=None, raw=False, **kwargs):
+    def fetch(self, relative_url, method="GET", data=None, raw=False, **kwargs):
         """
         Interact with the CATMAID server in a manner very similar to the javascript CATMAID.fetch API.
 
@@ -301,23 +304,29 @@ class CatmaidClient(AbstractCatmaidClient):
         """
         url = self._make_request_url(relative_url)
         data = data or dict()
-        if method.upper() == 'GET':
+        if method.upper() == "GET":
             response = self._session.get(url, params=data, **kwargs)
-        elif method.upper() == 'POST':
+        elif method.upper() == "POST":
             response = self._session.post(url, data=data, **kwargs)
         else:
-            raise ValueError('Unknown HTTP method {}'.format(repr(method)))
+            raise ValueError("Unknown HTTP method {}".format(repr(method)))
 
         response.raise_for_status()
         WrappedCatmaidException.raise_on_error(response)
-        if response.headers['content-type'] == 'application/json' and not raw:
+        if response.headers["content-type"] == "application/json" and not raw:
             return response.json()
         else:
             return response.text
 
 
 class CoordinateTransformer(object):
-    def __init__(self, resolution=None, translation=None, orientation=StackOrientation.XY, scale_z=False):
+    def __init__(
+        self,
+        resolution=None,
+        translation=None,
+        orientation=StackOrientation.XY,
+        scale_z=False,
+    ):
         """
         Helper class for transforming between stack and project coordinates.
 
@@ -345,18 +354,18 @@ class CoordinateTransformer(object):
         if translation is None:
             translation = dict()
 
-        self.resolution = {dim: resolution.get(dim, 1) for dim in 'zyx'}
-        self.translation = {dim: translation.get(dim, 0) for dim in 'zyx'}
+        self.resolution = {dim: resolution.get(dim, 1) for dim in "zyx"}
+        self.translation = {dim: translation.get(dim, 0) for dim in "zyx"}
         self.scale_z = scale_z
 
         self.orientation = self._validate_orientation(orientation)
-        self.depth_dim = [dim for dim in 'zyx' if dim not in self.orientation][0]
+        self.depth_dim = [dim for dim in "zyx" if dim not in self.orientation][0]
 
         # mapping of project dimension to stack dimension, based on orientation
         self._s2p = {
-            'x': self.orientation[0],
-            'y': self.orientation[1],
-            'z': self.depth_dim
+            "x": self.orientation[0],
+            "y": self.orientation[1],
+            "z": self.depth_dim,
         }
         # mapping of stack dimension to project dimension, based on orientation
         self._p2s = {value: key for key, value in self._s2p.items()}
@@ -367,7 +376,9 @@ class CoordinateTransformer(object):
         orientation = orientation_strs.get(orientation, orientation)
         lower = orientation.lower()
         if lower not in orientation_strs.values():
-            raise ValueError("orientation must be a StackOrientation, 'xy', 'xz', or 'zy'")
+            raise ValueError(
+                "orientation must be a StackOrientation, 'xy', 'xz', or 'zy'"
+            )
 
         return lower
 
@@ -386,11 +397,20 @@ class CoordinateTransformer(object):
         -------
         CoordinateTransformer
         """
-        stack_info = catmaid_client.get((catmaid_client.project_id, 'stack', stack_id, 'info'))
-        return cls(stack_info['resolution'], stack_info['translation'], stack_info['orientation'])
+        stack_info = catmaid_client.get(
+            (catmaid_client.project_id, "stack", stack_id, "info")
+        )
+        return cls(
+            stack_info["resolution"],
+            stack_info["translation"],
+            stack_info["orientation"],
+        )
 
     def project_to_stack_coord(self, proj_dim, project_coord):
-        return self._p2s[proj_dim], (project_coord - self.translation[proj_dim]) / self.resolution[proj_dim]
+        return (
+            self._p2s[proj_dim],
+            (project_coord - self.translation[proj_dim]) / self.resolution[proj_dim],
+        )
 
     def project_to_stack(self, project_coords):
         """
@@ -411,7 +431,7 @@ class CoordinateTransformer(object):
             for proj_dim, proj_coord in project_coords.items()
         )
 
-    def project_to_stack_array(self, arr, dims='xyz'):
+    def project_to_stack_array(self, arr, dims="xyz"):
         """
         Take an array of points in project space and transform them into stack space.
 
@@ -434,7 +454,10 @@ class CoordinateTransformer(object):
 
     def stack_to_project_coord(self, stack_dim, stack_coord):
         proj_dim = self._s2p[stack_dim]
-        return self._s2p[stack_dim], stack_coord * self.resolution[proj_dim] + self.translation[proj_dim]
+        return (
+            self._s2p[stack_dim],
+            stack_coord * self.resolution[proj_dim] + self.translation[proj_dim],
+        )
 
     def stack_to_project(self, stack_coords):
         """
@@ -455,7 +478,7 @@ class CoordinateTransformer(object):
             for stack_dim, stack_coord in stack_coords.items()
         )
 
-    def stack_to_project_array(self, arr, dims='xyz'):
+    def stack_to_project_array(self, arr, dims="xyz"):
         """
         Take an array of points in stack space and transform them into project space.
 
@@ -505,7 +528,7 @@ class CoordinateTransformer(object):
         -------
         float
         """
-        if dim == 'z' and not self.scale_z:
+        if dim == "z" and not self.scale_z:
             return stack_coord
         scale_diff = np.exp2(tgt_zoom - src_zoom)
         return stack_coord / scale_diff
@@ -535,7 +558,7 @@ class CoordinateTransformer(object):
             for dim, proj_coord in stack_coords.items()
         }
 
-    def stack_to_scaled_array(self, arr, tgt_zoom, src_zoom=0, dims='xyz'):
+    def stack_to_scaled_array(self, arr, tgt_zoom, src_zoom=0, dims="xyz"):
         """
         Take an array of points in stack space into scale them to a different zoom level.
 
@@ -562,14 +585,14 @@ class CoordinateTransformer(object):
         if self.scale_z:
             return out / scale_diff
         else:
-            xy_idxs = tuple(idx for idx, dim in enumerate(dims) if dim in 'xy')
+            xy_idxs = tuple(idx for idx, dim in enumerate(dims) if dim in "xy")
             out[:, xy_idxs] = out[:, xy_idxs] / scale_diff
             return out
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-        attributes = ('resolution', 'translation', 'scale_z')
+        attributes = ("resolution", "translation", "scale_z")
         return all(getattr(self, name) == getattr(other, name) for name in attributes)
 
 
@@ -596,11 +619,21 @@ def get_typed(d, key, constructor=None, default=None):
 
 
 class CatmaidUrl(object):
-    tracing_tool_name = 'tracingtool'
+    tracing_tool_name = "tracingtool"
 
     def __init__(
-        self, base_url, project_id, stack_group_id=None, stack_id=None, scale=0, x=None, y=None, z=None,
-        tool=None, active_skeleton_id=None, active_node_id=None
+        self,
+        base_url,
+        project_id,
+        stack_group_id=None,
+        stack_id=None,
+        scale=0,
+        x=None,
+        y=None,
+        z=None,
+        tool=None,
+        active_skeleton_id=None,
+        active_node_id=None,
     ):
         self.base_url = base_url
 
@@ -625,8 +658,17 @@ class CatmaidUrl(object):
 
     @classmethod
     def from_catmaid(
-        cls, catmaid_client, stack_group_id=None, stack_id=None, scale=0, x=None, y=None, z=None,
-        tool=None, active_skeleton_id=None, active_node_id=None
+        cls,
+        catmaid_client,
+        stack_group_id=None,
+        stack_id=None,
+        scale=0,
+        x=None,
+        y=None,
+        z=None,
+        tool=None,
+        active_skeleton_id=None,
+        active_node_id=None,
     ):
         """
         Instantiate CatmaidUrl based on a CATMAID interface instance.
@@ -651,8 +693,19 @@ class CatmaidUrl(object):
         -------
         CatmaidUrl
         """
-        return cls(catmaid_client.base_url, catmaid_client.project_id, stack_group_id, stack_id, scale, x, y, z,
-                   tool, active_skeleton_id, active_node_id)
+        return cls(
+            catmaid_client.base_url,
+            catmaid_client.project_id,
+            stack_group_id,
+            stack_id,
+            scale,
+            x,
+            y,
+            z,
+            tool,
+            active_skeleton_id,
+            active_node_id,
+        )
 
     @classmethod
     def from_url(cls, url):
@@ -667,29 +720,32 @@ class CatmaidUrl(object):
         -------
         CatmaidUrl
         """
-        base_url, args = url.split('/?')
-        d = dict(item.split('=') for item in args.split('&'))
+        base_url, args = url.split("/?")
+        d = dict(item.split("=") for item in args.split("&"))
 
         kwargs = dict(
-            project_id=get_typed(d, 'pid', int), scale=None,
-            x=get_typed(d, 'xp', float), y=get_typed(d, 'yp', float), z=get_typed(d, 'zp', float),
-            tool=d.get('tool'),
-            active_skeleton_id=get_typed(d, 'active_skeleton_id', int),
-            active_node_id=get_typed(d, 'active_node_id', int)
+            project_id=get_typed(d, "pid", int),
+            scale=None,
+            x=get_typed(d, "xp", float),
+            y=get_typed(d, "yp", float),
+            z=get_typed(d, "zp", float),
+            tool=d.get("tool"),
+            active_skeleton_id=get_typed(d, "active_skeleton_id", int),
+            active_node_id=get_typed(d, "active_node_id", int),
         )
 
         obj = cls(base_url, **kwargs)
-        obj.set_stack_group(stack_group_id=int(d.get('sg')), scale=float(d.get('sgs')))
+        obj.set_stack_group(stack_group_id=int(d.get("sg")), scale=float(d.get("sgs")))
 
         stacks = dict()
         scales = dict()
         for key, value in d.items():
-            if key.startswith('sid'):
+            if key.startswith("sid"):
                 try:
                     stacks[int(key[3:])] = int(value)
                 except ValueError:
                     pass
-            elif key.startswith('s'):
+            elif key.startswith("s"):
                 try:
                     scales[int(key[1:])] = int(value)
                 except ValueError:
@@ -742,43 +798,54 @@ class CatmaidUrl(object):
 
     def _terminate_base_url(self):
         url = self.base_url
-        if url.endswith('/'):
-            url += '?'
-        if not url.endswith('/?'):
-            url += '/?'
+        if url.endswith("/"):
+            url += "?"
+        if not url.endswith("/?"):
+            url += "/?"
 
         return url
 
     def __str__(self):
-        elements = ['pid={}'.format(self.project_id)]
+        elements = ["pid={}".format(self.project_id)]
 
-        coords = ['{}p={}'.format(dim, float(getattr(self, dim))) for dim in 'xyz' if getattr(self, dim) is not None]
+        coords = [
+            "{}p={}".format(dim, float(getattr(self, dim)))
+            for dim in "xyz"
+            if getattr(self, dim) is not None
+        ]
         if len(coords) == 3:
             elements.extend(coords)
         elif coords:
-            warn('Only {} of 3 coordinates found, ignoring'.format(len(coords)))
+            warn("Only {} of 3 coordinates found, ignoring".format(len(coords)))
 
         if self.tool:
-            elements.append('tool=' + self.tool)
-            if self.tool == 'tracingtool':
-                elements.append('active_node_id={}'.format(self.active_node_id))
-                elements.append('active_skeleton_id={}'.format(self.active_skeleton_id))
+            elements.append("tool=" + self.tool)
+            if self.tool == "tracingtool":
+                elements.append("active_node_id={}".format(self.active_node_id))
+                elements.append("active_skeleton_id={}".format(self.active_skeleton_id))
 
         if self.stack_group is not None:
-            elements.append('sg={}'.format(self.stack_group))
+            elements.append("sg={}".format(self.stack_group))
             elements.append(
-                'sgs={}'.format(
-                    float(self.stack_group_scale) if self.stack_group_scale is not None else float(self.default_scale)
+                "sgs={}".format(
+                    float(self.stack_group_scale)
+                    if self.stack_group_scale is not None
+                    else float(self.default_scale)
                 )
             )
 
         if not self.stacks:
-            warn('No stacks added found, URL may be invalid')
+            warn("No stacks added found, URL may be invalid")
         for idx, (stack_id, scale) in enumerate(self.stacks):
-            elements.append('sid{}={}'.format(idx, stack_id))
-            elements.append('s{}={}'.format(idx, float(scale) if scale is not None else float(self.default_scale)))
+            elements.append("sid{}={}".format(idx, stack_id))
+            elements.append(
+                "s{}={}".format(
+                    idx,
+                    float(scale) if scale is not None else float(self.default_scale),
+                )
+            )
 
-        return self._terminate_base_url() + '&'.join(elements)
+        return self._terminate_base_url() + "&".join(elements)
 
     def open(self):
         webbrowser.open(str(self), new=2)

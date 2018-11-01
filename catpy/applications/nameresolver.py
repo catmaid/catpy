@@ -10,7 +10,6 @@ from catpy.applications.base import CatmaidClientApplication
 
 
 def name_to_id(fn):
-
     def wrapper(instance, id_or_name, *args, **kwargs):
         if isinstance(id_or_name, int):
             return id_or_name

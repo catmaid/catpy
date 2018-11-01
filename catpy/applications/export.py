@@ -9,7 +9,7 @@ from networkx.readwrite import json_graph
 from catpy.applications.base import CatmaidClientApplication
 
 
-NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split('.'))
+NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split("."))
 
 
 err_msg = (
@@ -53,7 +53,6 @@ def convert_nodelink_data(jso):
 
 
 class ExportWidget(CatmaidClientApplication):
-
     def get_swc(self, skeleton_id, linearize_ids=False):
         """
         Get a single skeleton in SWC format.
@@ -213,7 +212,8 @@ class ExportWidget(CatmaidClientApplication):
                 conn_id = int(connector[1])
                 if conn_id not in skeleton["connectors"]:
                     skeleton["connectors"][conn_id] = {
-                        "presynaptic_to": [], "postsynaptic_to": []
+                        "presynaptic_to": [],
+                        "postsynaptic_to": [],
                     }
 
                 skeleton["connectors"][conn_id]["location"] = connector[3:6]
