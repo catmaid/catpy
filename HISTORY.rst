@@ -2,6 +2,12 @@
 History
 =======
 
+In progress
+-----------
+
+* Allow networkx 2+ to be used
+
+
 0.2.0 (2018-05-30)
 ------------------
 

@@ -1,0 +1,48 @@
+{
+  "directed": true,
+  "graph": {},
+  "links": [
+    {
+      "angle": 45,
+      "length": 20,
+      "source": 10,
+      "target": 20
+    },
+    {
+      "angle": 45,
+      "length": 20,
+      "source": 20,
+      "target": 30
+    },
+    {
+      "angle": 45,
+      "length": 20,
+      "source": 20,
+      "target": 10
+    },
+    {
+      "angle": 45,
+      "length": 20,
+      "source": 30,
+      "target": 10
+    }
+  ],
+  "multigraph": false,
+  "nodes": [
+    {
+      "colour": "r",
+      "id": 10,
+      "size": 10
+    },
+    {
+      "colour": "r",
+      "id": 20,
+      "size": 10
+    },
+    {
+      "colour": "r",
+      "id": 30,
+      "size": 10
+    }
+  ]
+}
