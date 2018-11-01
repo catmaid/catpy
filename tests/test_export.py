@@ -7,7 +7,7 @@ from networkx.readwrite import json_graph
 
 import pytest
 
-from catpy.export import ExportWidget, convert_nodelink_data
+from catpy.applications.export import ExportWidget, convert_nodelink_data
 
 try:
     from unittest.mock import Mock

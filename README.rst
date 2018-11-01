@@ -20,4 +20,4 @@ catpy
         :alt: License: MIT
 
 
-Python client for the `CATMAID <https://catmaid.org>`_ API
+Python client for the `CATMAID <https://catmaid.org>`_ API, plus some helpful tools for working with the data.
