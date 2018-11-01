@@ -15,6 +15,7 @@ except ImportError:
     from mock import Mock
 
 from tests.constants import FIXTURE_ROOT
+from tests.common import connectors_types, relation_identifier
 
 
 nx_version = tuple(int(i) for i in nx.__version__.split('.'))
@@ -47,10 +48,12 @@ def expected_graph():
 
 
 @pytest.fixture
-def export_widget():
+def export_widget(relation_identifier):
     catmaid = Mock()
     catmaid.project_id = 1
-    return ExportWidget(catmaid)
+    exp = ExportWidget(catmaid)
+    exp.get_relation_identifier = Mock(return_value=relation_identifier)
+    return exp
 
 
 def test_reads_nodelinks(nodelink_json, export_widget, expected_graph):

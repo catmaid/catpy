@@ -7,6 +7,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 
 from catpy.applications.base import CatmaidClientApplication
+from catpy.applications.relation_identifier import RelationIdentifier
 from catpy.client import ConnectorRelation
 
 
@@ -190,6 +191,7 @@ class ExportWidget(CatmaidClientApplication):
         -------
         dict
         """
+        rel_id = self.get_relation_identifier()
 
         skeletons = dict()
         warnings = set()
@@ -210,7 +212,7 @@ class ExportWidget(CatmaidClientApplication):
 
             for connector in data[1]:
                 try:
-                    relation = ConnectorRelation(connector[2])
+                    relation = rel_id.from_id(connector[2])
                 except ValueError as e:
                     msg = str(e)
                     if " is not a valid " in msg:
@@ -225,12 +227,11 @@ class ExportWidget(CatmaidClientApplication):
                 conn_id = int(connector[1])
                 if conn_id not in skeleton["connectors"]:
                     skeleton["connectors"][conn_id] = {
-                        str(r): [] for r in ConnectorRelation if r.is_synaptic
+                        r.name: [] for r in ConnectorRelation if r.is_synaptic
                     }
 
                 skeleton["connectors"][conn_id]["location"] = connector[3:6]
-                relation_name = str(relation)
-                skeleton["connectors"][conn_id][relation_name].append(connector[0])
+                skeleton["connectors"][conn_id][relation.name].append(connector[0])
 
             skeletons[int(skeleton_id)] = skeleton
 
@@ -240,3 +241,6 @@ class ExportWidget(CatmaidClientApplication):
         )
 
         return {"skeletons": skeletons}
+
+    def get_relation_identifier(self):
+        return RelationIdentifier(self._catmaid)

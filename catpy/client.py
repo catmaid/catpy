@@ -8,28 +8,60 @@ from abc import ABCMeta, abstractmethod
 from warnings import warn
 
 from six import string_types, add_metaclass
-from enum import IntEnum
+from enum import IntEnum, Enum
 import requests
 import numpy as np
 
 
-class ConnectorRelation(IntEnum):
-    """Enum describing the type of a treenode->connector relationship, i.e. the treenode is ____ to the connector"""
-    # todo: are these guaranteed?
-    PRESYNAPTIC_TO = 0
-    POSTSYNAPTIC_TO = 1
-    GAPJUNCTION_WITH = 2
-    OTHER = -1
-    # ABUTTING
-    # ATTACHED_TO
-    # CLOSE_TO
+class ConnectorRelationType(Enum):
+    SYNAPTIC = "Synaptic"
+    GAP_JUNCTION = "Gap junction"
+    ABUTTING = "Abutting"
+    ATTACHMENT = "Attachment"
+    SPATIAL = "Spatial"
+    OTHER = ""
+
+    @classmethod
+    def from_relation(cls, relation):
+        return {
+            ConnectorRelation.presynaptic_to: cls.SYNAPTIC,
+            ConnectorRelation.postsynaptic_to: cls.SYNAPTIC,
+            ConnectorRelation.gapjunction_with: cls.GAP_JUNCTION,
+            ConnectorRelation.abutting: cls.ABUTTING,
+            ConnectorRelation.attached_to: cls.ATTACHMENT,
+            ConnectorRelation.close_to: cls.SPATIAL,
+            ConnectorRelation.other: cls.OTHER
+        }[relation]
+
+
+class ConnectorRelation(Enum):
+    """Enum describing the link between a treenode and connector, i.e. the treenode is ____ to the connector.
+
+    The enum's ``name`` is CATMAID's concept of "relation name":
+    what is returned in the ``relation`` field of the <pid>/connectors/types/ response.
+
+    The enum's ``value`` is the ``name`` field of the <pid>/connectors/types/ response.
+
+    The mappings from relation name to relation ID are project-specific and must be fetched from CATMAID.
+    """
+    other = ""
+    presynaptic_to = "Presynaptic"
+    postsynaptic_to = "Postsynaptic"
+    gapjunction_with = "Gap junction"
+    abutting = "Abutting"
+    attached_to = "Attachment"
+    close_to = "Close to"
+
+    @property
+    def type(self):
+        return ConnectorRelationType.from_relation(self)
 
     @property
     def is_synaptic(self):
-        return self == type(self).PRESYNAPTIC_TO or self == type(self).POSTSYNAPTIC_TO
+        return self.type == ConnectorRelationType.SYNAPTIC
 
     def __str__(self):
-        return self.name.lower()
+        return self.value
 
 
 class StackOrientation(IntEnum):
