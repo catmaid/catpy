@@ -22,6 +22,19 @@ def name_to_id(fn):
     return wrapper
 
 
+def id_to_name(fn):
+
+    def wrapper(instance, id_or_name, *args, **kwargs):
+        if isinstance(id_or_name, string_types):
+            return id_or_name
+        elif isinstance(id_or_name, int):
+            return fn(instance, id_or_name, *args, **kwargs)
+        else:
+            raise TypeError("Argument was neither integer ID nor string name")
+
+    return wrapper
+
+
 class NameResolverException(ValueError):
     pass
 
@@ -115,3 +128,34 @@ class NameResolver(CatmaidClientApplication):
                 matching_ids.add(user["id"])
 
         return self._ensure_one(matching_ids, name, "user")
+
+    def get_neuron_names(self, *skeleton_ids):
+        """Get a dict of skeleton IDs to neuron names.
+
+        Parameters
+        ----------
+        skeleton_ids
+
+        Returns
+        -------
+        dict of int to str
+        """
+        # todo: lru cache
+        return self.post((self.project_id, "skeleton", "neuronnames"), {"skids": skeleton_ids})
+
+    @id_to_name
+    def get_neuron_name(self, skeleton_id):
+        """Get the neuron name associated with the given skeleton ID.
+
+        Utilises an LRU cache and can handle being given the name (just returns the name),
+        so useful for ensuring that a given argument resolves to a name either way.
+
+        Parameters
+        ----------
+        skeleton_id
+
+        Returns
+        -------
+        str
+        """
+        return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))["neuronname"]
