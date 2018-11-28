@@ -23,7 +23,7 @@ import requests
 from requests_futures.sessions import FuturesSession
 
 from catpy import CoordinateTransformer
-
+from catpy.client import StackOrientation
 
 logger = logging.getLogger()
 
@@ -96,11 +96,28 @@ DEFAULT_ROI_MODE = ROIMode.STACK
 
 
 class TileSourceType(IntEnum):
+    """https://catmaid.readthedocs.io/en/stable/tile_sources.html"""
     FILE_BASED = 1
+    REQUEST_QUERY = 2
+    HDF5 = 3
     FILE_BASED_WITH_ZOOM_DIRS = 4
     DIR_BASED = 5
+    DVID_IMAGEBLK = 6
     RENDER_SERVICE = 7
+    DVID_IMAGETILE = 8
     FLIXSERVER = 9
+    H2N5_TILES = 10
+
+    def format(self, **kwargs):
+        try:
+            format_url = format_urls[self]
+        except KeyError:
+            raise ValueError(
+                "{} is not supported by TileFetcher, supported types are below:\n\t{}".format(
+                    self, '\n\t'.join(str(k) for k in sorted(format_urls))
+                )
+            )
+        return format_url.format(**kwargs)
 
 
 format_urls = {
@@ -267,7 +284,7 @@ class StackMirror(object):
         self.title = str(title)
         self.position = int(position)
 
-        self.format_url = format_urls[self.tile_source_type].format(**self.__dict__)
+        self.format_url = self.tile_source_type.format(**self.__dict__)
 
     def generate_url(self, tile_index):
         """
@@ -421,7 +438,7 @@ class ProjectStack(Stack):
         super(ProjectStack, self).__init__(dimension, broken_slices, canary_location)
         self.translation = translation
         self.resolution = resolution
-        self.orientation = orientation
+        self.orientation = StackOrientation.from_value(orientation)
 
     @classmethod
     def from_stack_info(cls, stack_info):
@@ -438,7 +455,7 @@ class ProjectStack(Stack):
         """
         stack = cls(
             stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            cls.orientation_choices[stack_info['orientation']], stack_info['broken_slices'],
+            stack_info['orientation'], stack_info['broken_slices'],
             stack_info['canary_location']
         )
         mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
@@ -865,7 +882,7 @@ class ImageFetcher(object):
         if roi_mode == ROIMode.PROJECT:
             if not isinstance(self.stack, ProjectStack):
                 raise ValueError("ImageFetcher's stack is not related to a project, cannot use ROIMode.PROJECT")
-            if self.stack.orientation.lower() != 'xy':
+            if self.stack.orientation != StackOrientation.XY:
                 warn("Stack orientation differs from project: returned array's orientation will reflect"
                      "stack orientation, not project orientation")
             roi_tgt = self.coord_trans.project_to_stack_array(roi_tgt, dims=self.target_orientation)
