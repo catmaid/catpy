@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from catpy.client import ConnectorRelation
 
 from tests.common import relation_identifier, connectors_types  # noqa
