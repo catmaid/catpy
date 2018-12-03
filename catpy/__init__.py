@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 
-from catpy.client import CatmaidClient, CoordinateTransformer, CatmaidUrl, ConnectorRelation  # noqa
-from catpy.version import __version__, __version_info__  # noqa
-from catpy.author import __author__, __email__  # noqa
-from catpy import image
-from catpy import applications
-from catpy import exceptions
+from .client import CatmaidClient, CoordinateTransformer, CatmaidUrl, ConnectorRelation  # noqa
+from .version import __version__, __version_info__  # noqa
+from .author import __author__, __email__  # noqa
+from . import image
+from . import applications
+from . import exceptions
 
 __all__ = [
     "CatmaidClient",

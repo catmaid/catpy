@@ -56,10 +56,8 @@ setup(
     author_email=__email__,
     url='https://github.com/catmaid/catpy',
     packages=[
-        'catpy',
+        'catpy', 'catpy.applications'
     ],
-    package_dir={'catpy':
-                 'catpy'},
     include_package_data=True,
     install_requires=requirements,
     license="MIT license",
