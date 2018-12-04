@@ -16,6 +16,8 @@ import numpy as np
 class ConnectorRelationType(Enum):
     SYNAPTIC = "Synaptic"
     GAP_JUNCTION = "Gap junction"
+    TIGHT_JUNCTION = "Tight junction"
+    DESMOSOME = "Desmosome"
     ABUTTING = "Abutting"
     ATTACHMENT = "Attachment"
     SPATIAL = "Spatial"
@@ -27,6 +29,8 @@ class ConnectorRelationType(Enum):
             ConnectorRelation.presynaptic_to: cls.SYNAPTIC,
             ConnectorRelation.postsynaptic_to: cls.SYNAPTIC,
             ConnectorRelation.gapjunction_with: cls.GAP_JUNCTION,
+            ConnectorRelation.tightjunction_with: cls.TIGHT_JUNCTION,
+            ConnectorRelation.desmosome_with: cls.DESMOSOME,
             ConnectorRelation.abutting: cls.ABUTTING,
             ConnectorRelation.attached_to: cls.ATTACHMENT,
             ConnectorRelation.close_to: cls.SPATIAL,
@@ -48,6 +52,8 @@ class ConnectorRelation(Enum):
     presynaptic_to = "Presynaptic"
     postsynaptic_to = "Postsynaptic"
     gapjunction_with = "Gap junction"
+    tightjunction_with = "Tight junction"
+    desmosome_with = "Desmosome"
     abutting = "Abutting"
     attached_to = "Attachment"
     close_to = "Close to"
