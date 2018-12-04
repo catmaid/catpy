@@ -30,9 +30,12 @@ class RelationIdentifier(CatmaidClientApplication):
         if isinstance(self, type):
             raise ValueError("Cannot populate relation ID mappings as a class method")
 
+        project_id = int(project_id)
+
         id_to_rel = dict()
         rel_to_id = dict()
-        for obj in self._fetch_mappings(project_id):
+        types_response = self._fetch_mappings(project_id)
+        for obj in types_response:
             rel = ConnectorRelation[obj["relation"]]
             rel_id = obj["relation_id"]
 
@@ -43,7 +46,7 @@ class RelationIdentifier(CatmaidClientApplication):
         type(self).relation_to_id[project_id] = rel_to_id
 
     def _get_dict(self, is_relation, project_id):
-        project_id = project_id or self._check_pid()
+        project_id = int(project_id or self._check_pid())
         d = (self.id_to_relation, self.relation_to_id)[is_relation]
         if project_id not in d:
             self.populate_mappings(project_id)
