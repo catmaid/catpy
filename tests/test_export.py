@@ -54,7 +54,6 @@ def export_widget(relation_identifier):
     catmaid = Mock()
     catmaid.project_id = 1
     exp = ExportWidget(catmaid)
-    exp.get_relation_identifier = Mock(return_value=relation_identifier)
     return exp
 
 

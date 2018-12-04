@@ -8,8 +8,6 @@ import networkx as nx
 from networkx.readwrite import json_graph
 
 from catpy.applications.base import CatmaidClientApplication
-from catpy.applications.relation_identifier import RelationIdentifier
-from catpy.client import ConnectorRelation
 
 
 NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split('.'))
@@ -192,10 +190,10 @@ class ExportWidget(CatmaidClientApplication):
         -------
         dict
         """
-        rel_id = self.get_relation_identifier()
-
         skeletons = dict()
         warnings = set()
+
+        relation_names = {0: "presnaptic_to", 1: "postsynaptic_to"}
 
         for skeleton_id in skeleton_ids:
 
@@ -212,27 +210,19 @@ class ExportWidget(CatmaidClientApplication):
                 }
 
             for connector in data[1]:
-                try:
-                    relation = rel_id.from_id(connector[2])
-                except ValueError as e:
-                    msg = str(e)
-                    if " is not a valid " in msg:
-                        warnings.add(str(e))
-                        continue
-                    else:
-                        raise e
+                # NOT the database relation ID
+                # {pre: 0, post: 1, gj: 2}
+                relation_number = connector[2]
 
-                if not relation.is_synaptic:
+                if relation_number not in relation_names:
                     continue
 
                 conn_id = int(connector[1])
                 if conn_id not in skeleton["connectors"]:
-                    skeleton["connectors"][conn_id] = {
-                        r.name: [] for r in ConnectorRelation if r.is_synaptic
-                    }
+                    skeleton["connectors"][conn_id] = {rn: [] for rn in relation_names.values()}
 
                 skeleton["connectors"][conn_id]["location"] = connector[3:6]
-                skeleton["connectors"][conn_id][relation.name].append(connector[0])
+                skeleton["connectors"][conn_id][relation_names[relation_number]].append(connector[0])
 
             skeletons[int(skeleton_id)] = skeleton
 
@@ -242,6 +232,3 @@ class ExportWidget(CatmaidClientApplication):
         )
 
         return {"skeletons": skeletons}
-
-    def get_relation_identifier(self):
-        return RelationIdentifier(self._catmaid)
