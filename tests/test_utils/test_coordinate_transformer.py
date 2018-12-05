@@ -79,10 +79,14 @@ def default_coord_transformer(default_res, default_trans):
     return CoordinateTransformer(default_res, default_trans)
 
 
-@pytest.mark.parametrize('res_fixture', [default_res, lambda: None])
-@pytest.mark.parametrize('trans_fixture', [default_trans, lambda: None])
-def test_instantiate(res_fixture, trans_fixture):
-    assert CoordinateTransformer(res_fixture(), trans_fixture())
+@pytest.mark.parametrize('has_res', [True, False])
+@pytest.mark.parametrize('has_trans', [True, False])
+def test_instantiate(default_res, default_trans, has_res, has_trans):
+    if not has_res:
+        default_res = None
+    if not has_trans:
+        default_trans = None
+    assert CoordinateTransformer(default_res, default_trans)
 
 
 def test_from_catmaid(default_coord_transformer, catmaid_mock):
