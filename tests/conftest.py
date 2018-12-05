@@ -5,7 +5,10 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--credentials_json", action="store", default=None, help="path to catmaid credentials in JSON form"
+        "--credentials_json",
+        action="store",
+        default=None,
+        help="path to catmaid credentials in JSON form",
     )
 
 
@@ -18,4 +21,3 @@ def credentials(request):
 
     with open(cred_path) as f:
         return json.load(f)
-
