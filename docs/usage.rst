@@ -2,8 +2,8 @@
 Usage
 =====
 
-CatmaidClient
-=============
+``CatmaidClient``
+=================
 
 The basic feature of catpy is a class for interacting with CATMAID's REST API::
 
@@ -33,8 +33,8 @@ To make it easier to include variables, you can pass an iterable of URL componen
     project_id = 1
     annotations = client.post([project_id, 'annotations', 'query'], data=query)
 
-CatmaidClientApplication
-========================
+``CatmaidClientApplication``
+============================
 
 To write your own class making use of the ``CatmaidClient``, we recommend subclassing the
 ``CatmaidClientApplication`` abstract base class. This wraps an existing ``CatmaidClient`` instance, and passes through
@@ -42,7 +42,7 @@ calls to ``get``, ``post``, ``fetch``, ``base_url`` and ``project_id``, allowing
 composition of applications and minimising work if you want to change e.g. the project ID of all of the applications
 you're working with::
 
-    from catpy.client import CatmaidClientApplication
+    from catpy.applications import CatmaidClientApplication
 
     class AnnotationFetcher(CatmaidClientApplication):
         def fetch_annotations(self, object_ids):
@@ -53,16 +53,22 @@ you're working with::
     annotation_fetcher = AnnotationFetcher(client)
     annotations = annotation_fetcher.fetch_annotations(42)
 
-``CatmaidClient`` and all ``CatmaidClientApplication``s are subclasses of ``AbstractCatmaidClient``,
+``CatmaidClient`` and all ``CatmaidClientApplication`` s are subclasses of ``AbstractCatmaidClient`` ,
 for type checking purposes.
 
-CoordinateTransformer
-=====================
+Some included ``CatmaidClientApplication`` s, importable from ``catpy.applications`` are:
+
+- ``ExportWidget``: Replicates some of the functionality of the frontend's Export Widget
+- ``NameResolver``: Resolves string names into integer IDs for some objects (e.g. stacks, users, neurons)
+- ``RelationIdentifier``: Converts database IDs into a connector relation enum
+
+``CoordinateTransformer``
+=========================
 
 A common task requires transforming coordinates between project (real) and stack (pixel) space. A class is provided for
 this purpose::
 
-    from catpy.client import CoordinateTransformer
+    from catpy import CoordinateTransformer
 
     transformer = CoordinateTransformer.from_catmaid(client, stack_id=5)
     stack_coords = {'x': 150, 'y': 252, 'z': 2}
@@ -83,12 +89,12 @@ N.B.: projects dealing with multiple stacks at different anisotropies have a dif
 of scale levels than a simple project-stack relationship, and so these scale levels may not match up
 with what you see in the CATMAID UI.
 
-CatmaidUrl
-==========
+``CatmaidUrl``
+==============
 
 This simple class handles reading and generating deep links to particular views in the CATMAID UI::
 
-    from catpy.client import CatmaidUrl
+    from catpy import CatmaidUrl
 
     url_obj = CatmaidUrl.from_catmaid(client, x=20, y=30, z=40)
     url_obj.stack_id = 5
@@ -101,8 +107,10 @@ This simple class handles reading and generating deep links to particular views 
     url_obj2.stack_id == 5
     url_obj2.open()  # opens default web browser at this URL
 
-ImageFetcher
-============
+
+
+``ImageFetcher``
+================
 
 This handles fetching ROIs of greyscale uint8 image data from some of CATMAID's common tile sources::
 
@@ -132,3 +140,8 @@ the requested orientation, rather than going stack -> project -> requested.
 
 N.B.: There is also an experimental ``ThreadedImageFetcher`` for large ROIs over slow connections. For
 small ROIs and fast connections, the threading overhead may erase the benefits of parallelised downloads.
+
+Miscellaneous utilities
+=========
+
+Some additional tools are found in ``catpy.utils`` .

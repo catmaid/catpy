@@ -13,3 +13,4 @@ PyYAML==3.11
 mock==2.0.0; python_version < '3.6'
 wheel==0.31
 twine==1.11
+watchdog==0.9.0
