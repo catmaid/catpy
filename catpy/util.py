@@ -1,5 +1,7 @@
 import numpy as np
 
+from six.moves import zip
+
 
 def get_virtual_treenodes(treenodes_response, z_depth):
     """
