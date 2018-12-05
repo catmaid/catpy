@@ -9,6 +9,7 @@ In progress
 * Allow networkx 2+ to be used
 * Add NameResolver application
 * Add enum for connector relation types
+* Add utility for interpolating virtual treenodes
 
 
 0.2.0 (2018-05-30)

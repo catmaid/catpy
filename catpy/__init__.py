@@ -6,6 +6,7 @@ from .version import __version__, __version_info__  # noqa
 from .author import __author__, __email__  # noqa
 from . import image
 from . import applications
+from . import util
 from . import exceptions
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "CatmaidUrl",
     "image",
     "applications",
+    "util",
     "exceptions",
 ]
