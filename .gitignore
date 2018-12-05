@@ -54,7 +54,7 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
-docs/catpy.rst
+docs/catpy*.rst
 docs/modules.rst
 
 # PyBuilder
