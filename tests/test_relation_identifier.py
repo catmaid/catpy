@@ -21,9 +21,9 @@ def real_relation_identifier(credentials):
     return RelationIdentifier(CatmaidClient(**credentials))
 
 
-def populate_relid(relation_identifier):
-    relation_identifier._get_dict(False, None)
-    relation_identifier._get_dict(True, None)
+def populate_relid(relid):
+    relid._get_dict(False, None)
+    relid._get_dict(True, None)
 
 
 def test_from_id_real(real_relation_identifier):
