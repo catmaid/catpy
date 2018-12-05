@@ -1,15 +1,15 @@
 -r prod.txt
 bumpversion==0.5.3
-coverage==4.1
+coverage==4.5.2
 cryptography==2.4.2
-flake8==3.2.1
-numpydoc==0.6.0
-Sphinx==1.5.1
-tox==2.3.1
-pytest==3.0.7
-pytest-cov==2.5.1
-pytest-runner==2.11.1
-PyYAML==3.11
+flake8==3.6.0
+numpydoc==0.8.0
+Sphinx==1.8.2
+tox==3.5.3
+pytest==4.0.1
+pytest-cov==2.6.0
+pytest-runner==4.2
+PyYAML==3.13
 mock==2.0.0; python_version < '3.6'
 wheel==0.31
 twine==1.11
