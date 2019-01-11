@@ -114,12 +114,23 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    "description": "Python client for the CATMAID API",
+    "description_font_style": "italic",
+    "fixed_sidebar": True,
+    "logo": "catmaidlogo.png",
+    "logo_name": True,
+    "logo_text_align": "center",
+    "github_user": "catmaid",
+    "github_repo": "catpy",
+    "github_banner": True,
+    "travis_button": True
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -153,7 +164,7 @@ html_static_path = ['_static']
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
-#html_use_smartypants = True
+html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
@@ -281,16 +292,22 @@ texinfo_documents = [
 # See: https://github.com/numpy/numpydoc/pull/6
 numpydoc_class_members_toctree = False
 
+# Paths relative to this directory of modules which are not to be documented
+exclude_module_paths = [
+    "../catpy/author.py",
+    "../catpy/version.py"
+]
+
 # Run autodoc here, rather than in a Makefile, so that it is also
 # executed by readthedocs.org.
 def run_apidoc(_):
-    from sphinx.apidoc import main
+    from sphinx.ext.apidoc import main
     import os
     import sys
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     cur_dir = os.path.abspath(os.path.dirname(__file__))
     module = os.path.join('..', project)
-    main(['-e', '-o', cur_dir, module, '--force'])
+    main([module] + exclude_module_paths + ['-e', '-o', cur_dir, '--force'])
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
