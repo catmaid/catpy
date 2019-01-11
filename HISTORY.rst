@@ -6,6 +6,12 @@ History
 In progress
 -----------
 
+
+0.3.0 (2019-01-11)
+------------------
+
+* Refactors
+* Improve docs
 * Allow networkx 2+ to be used
 * Add NameResolver application
 * Add enum for connector relation types
