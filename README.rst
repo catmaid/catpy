@@ -1,6 +1,5 @@
-=====
-catpy
-=====
+catpy - Python client for the CATMAID API
+=========================================
 
 
 .. image:: https://img.shields.io/pypi/v/catpy.svg

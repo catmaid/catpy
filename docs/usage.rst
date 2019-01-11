@@ -142,6 +142,6 @@ N.B.: There is also an experimental ``ThreadedImageFetcher`` for large ROIs over
 small ROIs and fast connections, the threading overhead may erase the benefits of parallelised downloads.
 
 Miscellaneous utilities
-=========
+=======================
 
 Some additional tools are found in ``catpy.utils`` .
