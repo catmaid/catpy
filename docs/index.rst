@@ -1,14 +1,11 @@
-catpy - Python client for the CATMAID API
-=========================================
-
-Contents:
+.. include:: ../README.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   readme
    installation
    usage
+   catpy
    contributing
    authors
    history
