@@ -190,6 +190,7 @@ class ExportWidget(CatmaidClientApplication):
         -------
         dict
         """
+        # todo: factor API call into MorphologyFetcher
         skeletons = dict()
         warnings = set()
 
