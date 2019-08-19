@@ -47,6 +47,22 @@ class MultipleMatchingNamesException(NameResolverException):
     pass
 
 
+class NameIdMapping:
+    def __init__(self, name_id_pairs):
+        self.name_to_id = dict()
+        self.id_to_name = dict()
+
+        counter = 0
+        for name, id_ in name_id_pairs:
+            id_ = int(id_)
+            self.name_to_id[name] = id_
+            self.id_to_name[id_] = name
+            counter += 1
+
+        if counter != len(self.name_to_id) or counter != len(self.id_to_name):
+            raise ValueError("Non-unique names or IDs; cannot make 2-way mapping")
+
+
 class NameResolver(CatmaidClientApplication):
     """Catmaid client application which looks up integer database IDs for string names for various objects.
 
@@ -159,3 +175,25 @@ class NameResolver(CatmaidClientApplication):
         str
         """
         return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))["neuronname"]
+
+    @lru_cache(1)
+    def _list_annotations(self):
+        response = self.get((self.project_id, "annotations"))
+        return NameIdMapping(
+            (obj["name"], obj["id"]) for obj in response["annotations"]
+        )
+
+    @name_to_id
+    def get_annotation_id(self, annotation_name):
+        return self._list_annotations().name_to_id[annotation_name]
+
+    @id_to_name
+    def get_annotation_name(self, annotation_id):
+        return self._list_annotations().id_to_name[int(annotation_id)]
+
+    def clear_cache(self, *names):
+        if not names:
+            names = [k for k, v in self.__dict__.items() if hasattr(v, "cache_clear")]
+
+        for name in names:
+            getattr(self, name).cache_clear()
