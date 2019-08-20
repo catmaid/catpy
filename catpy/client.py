@@ -130,7 +130,7 @@ def make_url(base_url, *args):
 
 
 class WrappedCatmaidException(Exception):
-    exception_keys = frozenset(('traceback', 'error', 'type'))
+    exception_keys = frozenset(('error', 'type'))
     spacer = '    '
 
     def __init__(self, message, response):
@@ -146,7 +146,7 @@ class WrappedCatmaidException(Exception):
         super(WrappedCatmaidException, self).__init__(message)
         self.msg = message
         data = response.json()
-        self.traceback = data['traceback']
+        self.traceback = data.get("traceback", data.get("detail", None))
         self.type = data['type']
         self.error = data['error']
 
