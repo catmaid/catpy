@@ -1,5 +1,6 @@
 from __future__ import unicode_literals, absolute_import
 from six import string_types
+import logging
 
 try:
     from functools import lru_cache
@@ -7,6 +8,9 @@ except ImportError:
     from backports.functools_lru_cache import lru_cache
 
 from catpy.applications.base import CatmaidClientApplication
+
+
+logger = logging.getLogger(__name__)
 
 
 def name_to_id(fn):
@@ -99,7 +103,8 @@ class NameResolver(CatmaidClientApplication):
             )
 
     @lru_cache(1)
-    def _get_stacks(self):
+    def _stacks(self):
+        logger.debug("Populating _stacks cache")
         return self.get((self.project_id, "stacks"))
 
     @name_to_id
@@ -116,14 +121,15 @@ class NameResolver(CatmaidClientApplication):
         int
         """
         matching_ids = set()
-        for stack in self._get_stacks():
+        for stack in self._stacks():
             if stack["title"] == title:
                 matching_ids.add(stack["id"])
 
         return self._ensure_one(matching_ids, title, "stack")
 
     @lru_cache(1)
-    def _get_user_list(self):
+    def _user_list(self):
+        logger.debug("Populating _user_list cache")
         return self.get("user-list")
 
     @name_to_id
@@ -139,7 +145,7 @@ class NameResolver(CatmaidClientApplication):
         int
         """
         matching_ids = set()
-        for user in self._get_user_list():
+        for user in self._user_list():
             if name in [user["login"], user["full_name"]]:
                 matching_ids.add(user["id"])
 
@@ -178,6 +184,7 @@ class NameResolver(CatmaidClientApplication):
 
     @lru_cache(1)
     def _list_annotations(self):
+        logger.debug("Populating _list_annotations cache")
         response = self.get((self.project_id, "annotations"))
         return NameIdMapping(
             (obj["name"], obj["id"]) for obj in response["annotations"]
