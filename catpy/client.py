@@ -6,6 +6,7 @@ import json
 import webbrowser
 from abc import ABCMeta, abstractmethod
 from warnings import warn
+import textwrap
 
 from six import string_types, add_metaclass
 from enum import IntEnum, Enum
@@ -129,11 +130,10 @@ def make_url(base_url, *args):
     return base_url
 
 
-class WrappedCatmaidException(Exception):
-    exception_keys = frozenset(('error', 'type'))
+class WrappedCatmaidException(requests.HTTPError):
     spacer = '    '
 
-    def __init__(self, message, response):
+    def __init__(self, response, error_data=None):
         """
         Exception wrapping a django error which results in a JSON response being returned containing information
         about that error.
@@ -143,30 +143,39 @@ class WrappedCatmaidException(Exception):
         response : requests.Response
             Response containing JSON-formatted error from Django
         """
-        super(WrappedCatmaidException, self).__init__(message)
-        self.msg = message
-        data = response.json()
-        self.traceback = data.get("traceback", data.get("detail", None))
-        self.type = data['type']
-        self.error = data['error']
+        super(WrappedCatmaidException, self).__init__(
+            "Received HTTP{} from {}".format(response.status_code, response.url),
+            response=response
+        )
+        if error_data is None:
+            error_data = response.json()
+
+        self.error = error_data["error"]
+        self.detail = error_data["detail"]
+        self.type = error_data["type"]
+
+        self.meta = error_data.get("meta")
+        self.info = error_data.get("info")
+        self.traceback = error_data.get("traceback")
 
     def __str__(self):
-        return '\n'.join([
-                    super(WrappedCatmaidException, self).__str__(),
-                    self.spacer + 'Response contained traceback (most recent call last):'
-                ] + [
-                    self.spacer + line for line in self.traceback.split('\n')
-                ] + [
-                    '{}{}: {}'.format(self.spacer, self.type, self.error)
-                ]
-            )
+        return "\n".join([
+            super(WrappedCatmaidException, self).__str__(),
+            self.spacer + "Response contained:",
+            textwrap.indent(self.detail.rstrip(), self.spacer)
+        ])
 
     @classmethod
-    def raise_on_error(cls, response):
-        if response.headers.get('content-type') == 'application/json':
-            data = response.json()
-            if isinstance(data, dict) and cls.exception_keys.issubset(data):
-                raise cls('Received error response from {}'.format(response.url), response)
+    def raise_for_status(cls, response):
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            if response.headers.get('content-type') == 'application/json':
+                try:
+                    raise cls(response) from e
+                except KeyError:
+                    pass
+            raise e
 
 
 @add_metaclass(ABCMeta)
@@ -389,8 +398,7 @@ class CatmaidClient(AbstractCatmaidClient):
         else:
             raise ValueError('Unknown HTTP method {}'.format(repr(method)))
 
-        response.raise_for_status()
-        WrappedCatmaidException.raise_on_error(response)
+        WrappedCatmaidException.raise_for_status(response)
         if response.headers['content-type'] == 'application/json' and not raw:
             return response.json()
         else:
