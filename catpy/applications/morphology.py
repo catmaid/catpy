@@ -150,6 +150,7 @@ class MorphologyFetcher(CatmaidClientApplication):
         for skid_str, response in responses["skeletons"].items():
             yield SkeletonCompactDetail.from_response(int(skid_str), response)
 
+    # todo: decide what to do with these
     # def get_nodes_in_roi(self, roi_xyz, stack_id=None):
     #     """
     #     Get the nodes in the ROI with their coordinates relative to the top-left corner of the ROI.
