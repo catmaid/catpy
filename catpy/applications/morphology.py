@@ -4,10 +4,9 @@ from typing import NamedTuple, List, Dict
 import numpy as np
 import pandas as pd
 
-from catpy.applications import NameResolver
+from .nameresolver import NameResolver
 from .base import CatmaidClientApplication
-from ..client import CoordinateTransformer
-
+from ..spatial import CoordinateTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +55,13 @@ def interpolate_node_locations(parent_xyz, child_xyz, z_res=1, z_offset=0):
 def in_roi(roi_xyz, coords_xyz):
     """Closed interval: use intersection_roi"""
     x, y, z = coords_xyz
-    return all([
-        roi_xyz[0, 0] <= x <= roi_xyz[1, 0],
-        roi_xyz[0, 1] <= y <= roi_xyz[1, 1],
-        roi_xyz[0, 2] <= z <= roi_xyz[1, 2]
-    ])
+    return all(
+        [
+            roi_xyz[0, 0] <= x <= roi_xyz[1, 0],
+            roi_xyz[0, 1] <= y <= roi_xyz[1, 1],
+            roi_xyz[0, 2] <= z <= roi_xyz[1, 2],
+        ]
+    )
 
 
 class SkeletonCompactDetail(NamedTuple):
@@ -74,16 +75,23 @@ class SkeletonCompactDetail(NamedTuple):
         node_data = lol_to_df(
             response[0],
             ["id", "parent", "user", "x", "y", "z", "radius", "confidence"],
-            [np.uint64, pd.UInt64Dtype(), np.uint64, np.float64, np.float64, np.float64, np.float64, np.uint8]
+            [
+                np.uint64,
+                pd.UInt64Dtype(),
+                np.uint64,
+                np.float64,
+                np.float64,
+                np.float64,
+                np.float64,
+                np.uint8,
+            ],
         )
         conn_data = lol_to_df(
             response[1],
             ["treenode", "connector", "relation", "x", "y", "z"],
-            [np.uint64, np.uint64, np.int8, np.float64, np.float64, np.float64]
+            [np.uint64, np.uint64, np.int8, np.float64, np.float64, np.float64],
         )
-        return SkeletonCompactDetail(
-            int(skid), node_data, conn_data, response[2]
-        )
+        return SkeletonCompactDetail(int(skid), node_data, conn_data, response[2])
 
 
 class MorphologyFetcher(CatmaidClientApplication):
@@ -108,7 +116,7 @@ class MorphologyFetcher(CatmaidClientApplication):
                 raise ValueError("Stack ID/title not given")
         else:
             stack_id = self._get_stack_id(stack_id)
-        return self.get((self.project_id, 'stack', stack_id, 'info'))
+        return self.get((self.project_id, "stack", stack_id, "info"))
 
     def get_coord_transformer(self, stack_id=None):
         if stack_id is None:
@@ -124,7 +132,9 @@ class MorphologyFetcher(CatmaidClientApplication):
             params["with_connectors"] = "true"
         if tags:
             params["with_tags"] = "true"
-        response = self.get((self.project_id, 'skeletons', skeleton_id, 'compact-detail'), params=params)
+        response = self.get(
+            (self.project_id, "skeletons", skeleton_id, "compact-detail"), params=params
+        )
         return SkeletonCompactDetail.from_response(int(skeleton_id), response)
 
     def get_compact_skeletons_detail(self, skeleton_ids, connectors=False, tags=False):
@@ -134,7 +144,9 @@ class MorphologyFetcher(CatmaidClientApplication):
             params["with_connectors"] = "true"
         if tags:
             params["with_tags"] = "true"
-        responses = self.post((self.project_id, 'skeletons', 'compact-detail'), data=params)
+        responses = self.post(
+            (self.project_id, "skeletons", "compact-detail"), data=params
+        )
         for skid_str, response in responses["skeletons"].items():
             yield SkeletonCompactDetail.from_response(int(skid_str), response)
 

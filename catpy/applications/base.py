@@ -1,15 +1,13 @@
 from __future__ import absolute_import
 
-from abc import ABCMeta
+from abc import ABC
 from functools import wraps
 
-from six import add_metaclass
 
-from catpy.client import CatmaidClient, AbstractCatmaidClient
+from ..client import CatmaidClient, AbstractCatmaidClient
 
 
-@add_metaclass(ABCMeta)
-class CatmaidClientApplication(AbstractCatmaidClient):
+class CatmaidClientApplication(AbstractCatmaidClient, ABC):
     """
     An application which uses the CATMAID interface. Users should subclass this when creating their own applications.
     """

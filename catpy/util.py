@@ -1,7 +1,5 @@
 import numpy as np
 
-from six.moves import zip
-
 
 def get_virtual_treenodes(treenodes_response, z_depth):
     """
@@ -32,7 +30,7 @@ def get_virtual_treenodes(treenodes_response, z_depth):
         parent = row[1]
         data[int(row[0])] = {
             "parent": None if parent is None else int(parent),
-            "location": np.array(row[3:6], dtype=float)
+            "location": np.array(row[3:6], dtype=float),
         }
 
     for tnid, d in data.items():
@@ -47,7 +45,7 @@ def get_virtual_treenodes(treenodes_response, z_depth):
             yield (d["parent"], tnid), virtual_treenodes
 
 
-def interpolate_treenodes(parent_xyz, child_xyz, z_depth):
+def interpolate_treenodes(parent_xyz, child_xyz, z_depth, z_offset=0):
     """
     Yield the locations of virtual treenodes between two material treenodes.
 
@@ -61,20 +59,23 @@ def interpolate_treenodes(parent_xyz, child_xyz, z_depth):
     child_xyz : sequence of (float, float, float)
     z_depth : float
         e.g. z-resolution
+    z_offset: float
+        offset of z in project coordinates, default 0
 
     Returns
     -------
     Iterator of (x,y,z) tuples
     """
     parent_child_xyz = np.array((parent_xyz, child_xyz), dtype=float)
-    z_slices = np.round(parent_child_xyz[:, 2] / z_depth)
+
+    z_slices = np.round((parent_child_xyz[:, 2] - z_offset) / z_depth)
 
     n_vnodes = int(abs(np.diff(z_slices)[0])) - 1
 
     if n_vnodes < 1:
         return
 
-    parent_child_xyz[:, 2] = z_slices * z_depth
+    parent_child_xyz[:, 2] = z_slices * z_depth + z_offset
 
     it = zip(
         *[np.linspace(*parent_child_xyz[:, idx], num=n_vnodes + 2) for idx in range(3)]

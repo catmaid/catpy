@@ -1,24 +1,20 @@
 from __future__ import unicode_literals, absolute_import
-from six import string_types
 import logging
 
-try:
-    from functools import lru_cache
-except ImportError:
-    from backports.functools_lru_cache import lru_cache
+from functools import lru_cache
 
-from catpy.applications.base import CatmaidClientApplication
+from catpy.exceptions import NoMatchingNamesException, MultipleMatchingNamesException
+from .base import CatmaidClientApplication
 
 
 logger = logging.getLogger(__name__)
 
 
 def name_to_id(fn):
-
     def wrapper(instance, id_or_name, *args, **kwargs):
         if isinstance(id_or_name, int):
             return id_or_name
-        elif isinstance(id_or_name, string_types):
+        elif isinstance(id_or_name, str):
             return fn(instance, id_or_name, *args, **kwargs)
         else:
             raise TypeError("Argument was neither integer ID nor string name")
@@ -27,9 +23,8 @@ def name_to_id(fn):
 
 
 def id_to_name(fn):
-
     def wrapper(instance, id_or_name, *args, **kwargs):
-        if isinstance(id_or_name, string_types):
+        if isinstance(id_or_name, str):
             return id_or_name
         elif isinstance(id_or_name, int):
             return fn(instance, id_or_name, *args, **kwargs)
@@ -37,18 +32,6 @@ def id_to_name(fn):
             raise TypeError("Argument was neither integer ID nor string name")
 
     return wrapper
-
-
-class NameResolverException(ValueError):
-    pass
-
-
-class NoMatchingNamesException(NameResolverException):
-    pass
-
-
-class MultipleMatchingNamesException(NameResolverException):
-    pass
 
 
 class NameIdMapping:
@@ -163,7 +146,9 @@ class NameResolver(CatmaidClientApplication):
         dict of int to str
         """
         # todo: lru cache
-        return self.post((self.project_id, "skeleton", "neuronnames"), {"skids": skeleton_ids})
+        return self.post(
+            (self.project_id, "skeleton", "neuronnames"), {"skids": skeleton_ids}
+        )
 
     @id_to_name
     def get_neuron_name(self, skeleton_id):
@@ -180,7 +165,9 @@ class NameResolver(CatmaidClientApplication):
         -------
         str
         """
-        return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))["neuronname"]
+        return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))[
+            "neuronname"
+        ]
 
     @lru_cache(1)
     def _list_annotations(self):

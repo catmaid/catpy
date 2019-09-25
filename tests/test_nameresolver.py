@@ -7,12 +7,8 @@ except ImportError:
 
 import pytest
 
-from catpy.applications.nameresolver import (
-    NameResolver,
-    MultipleMatchingNamesException,
-    NoMatchingNamesException,
-)
-
+from catpy.applications.nameresolver import NameResolver
+from catpy.exceptions import NoMatchingNamesException, MultipleMatchingNamesException
 
 PROJECT_ID = 1
 
