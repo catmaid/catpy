@@ -27,7 +27,7 @@ else:
 
 setup_requirements = ["pytest-runner>=2.11"]
 
-test_requirements = ["pytest>=3", "mock>=2; python_version < '3.6'"]
+test_requirements = ["pytest>=3"]
 
 setup(
     name="catpy",
@@ -50,11 +50,11 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
+    requires_python=">=3.6",
     setup_requires=setup_requirements,
     test_suite="tests",
     tests_require=test_requirements,
