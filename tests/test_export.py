@@ -17,8 +17,6 @@ except ImportError:
     from mock import Mock
 
 from tests.constants import FIXTURE_ROOT
-from tests.common import connectors_types, relation_identifier  # noqa
-
 
 nx_version = tuple(int(i) for i in nx.__version__.split("."))
 

@@ -4,7 +4,7 @@ from .base import CatmaidClientApplication
 from .export import ExportWidget
 from .nameresolver import NameResolver
 from .relation_identifier import RelationIdentifier
-from .morphology import MorphologyFetcher, interpolate_node_locations
+from .morphology import MorphologyFetcher
 
 __all__ = [
     "CatmaidClientApplication",

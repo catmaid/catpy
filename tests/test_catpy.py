@@ -11,7 +11,6 @@ from __future__ import absolute_import
 
 import catpy.client
 import catpy.util
-from catpy import client
 
 
 def test_make_url_double_slash():

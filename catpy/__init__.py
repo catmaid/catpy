@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from .client import CatmaidClient  # noqa
-from .enums import ConnectorRelation
+from .client import CatmaidClient
 from .url import CatmaidUrl
 from .spatial import CoordinateTransformer
 from .version import __version__, __version_info__  # noqa
