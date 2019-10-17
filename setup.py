@@ -16,14 +16,7 @@ version_dict = runpy.run_path(os.path.join(here, "catpy", "version.py"))
 
 author_dict = runpy.run_path(os.path.join(here, "catpy", "author.py"))
 
-requirements = ["numpy>=1.12", "Pillow>=5.0", "requests>=2.14", "requests-futures>=0.9"]
-
-# environment variable can force a specific networkx requirement, for testing purposes (see tox.ini)
-nx_version = os.environ.get("CATPY_NX")
-if nx_version:
-    requirements.append("networkx" + nx_version)
-else:
-    requirements.append("networkx>=1.11")
+requirements = ["networkx>=2.0", "numpy>=1.12", "Pillow>=5.0", "requests>=2.14", "requests-futures>=0.9"]
 
 setup_requirements = ["pytest-runner>=2.11"]
 
