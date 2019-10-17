@@ -34,8 +34,8 @@ def nx_to_treenodes(g):
 @pytest.fixture
 def treenode_response():
     g = nx.DiGraph()
-    g.add_path([1, 2, 3, 4, 5, 10])
-    g.add_path([4, 11, 12, 13, 14, 15, 20])
+    nx.add_path(g, [1, 2, 3, 4, 5, 10])
+    nx.add_path(g, [4, 11, 12, 13, 14, 15, 20])
     return nx_to_treenodes(g)
 
 

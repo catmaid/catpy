@@ -16,7 +16,13 @@ version_dict = runpy.run_path(os.path.join(here, "catpy", "version.py"))
 
 author_dict = runpy.run_path(os.path.join(here, "catpy", "author.py"))
 
-requirements = ["networkx>=2.0", "numpy>=1.12", "Pillow>=5.0", "requests>=2.14", "requests-futures>=0.9"]
+requirements = [
+    "networkx>=2.0",
+    "numpy>=1.12",
+    "Pillow>=5.0",
+    "requests>=2.14",
+    "requests-futures>=0.9",
+]
 
 setup_requirements = ["pytest-runner>=2.11"]
 

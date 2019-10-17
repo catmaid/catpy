@@ -11,7 +11,6 @@ import itertools
 from warnings import warn
 
 from concurrent.futures import Future, as_completed
-from enum import IntEnum
 
 from PIL import Image
 import numpy as np
@@ -19,7 +18,7 @@ import requests
 from requests_futures.sessions import FuturesSession
 
 from catpy.spatial import StackOrientation, CoordinateTransformer
-from catpy.stacks import StackMirror, ProjectStack
+from catpy.stacks import StackMirror, ProjectStack, TileIndex
 from catpy.util import StrEnum
 from catpy.compat import tqdm
 
@@ -63,42 +62,6 @@ class ROIMode(StrEnum):
 
 
 DEFAULT_ROI_MODE = ROIMode.STACK
-
-
-class TileSourceType(IntEnum):
-    """https://catmaid.readthedocs.io/en/stable/tile_sources.html"""
-
-    FILE_BASED = 1
-    REQUEST_QUERY = 2
-    HDF5 = 3
-    FILE_BASED_WITH_ZOOM_DIRS = 4
-    DIR_BASED = 5
-    DVID_IMAGEBLK = 6
-    RENDER_SERVICE = 7
-    DVID_IMAGETILE = 8
-    FLIXSERVER = 9
-    H2N5_TILES = 10
-
-    def format(self, **kwargs):
-        try:
-            format_url = format_urls[self]
-        except KeyError:
-            raise ValueError(
-                "{} is not supported by TileFetcher, supported types are below:\n\t{}".format(
-                    self, "\n\t".join(str(k) for k in sorted(format_urls))
-                )
-            )
-        return format_url.format(**kwargs)
-
-
-format_urls = {
-    TileSourceType.FILE_BASED: "{image_base}{{depth}}/{{row}}_{{col}}_{{zoom_level}}.{file_extension}",
-    TileSourceType.FILE_BASED_WITH_ZOOM_DIRS: "{image_base}{{depth}}/{{zoom_level}}/{{row}}_{{col}}.{file_extension}",
-    TileSourceType.DIR_BASED: "{image_base}{{zoom_level}}/{{depth}}/{{row}}/{{col}}.{file_extension}",
-    TileSourceType.RENDER_SERVICE: "{image_base}largeDataTileSource/{tile_width}/{tile_height}/"
-    "{{zoom_level}}/{{depth}}/{{row}}/{{col}}.{file_extension}",
-    TileSourceType.FLIXSERVER: "{image_base}{{depth}}/{{row}}_{{col}}_{{zoom_level}}.{file_extension}",
-}
 
 
 def response_to_array(response, pil_kwargs=None):
@@ -186,72 +149,6 @@ def is_valid_format_url(format_url):
         "file_extension",
     ]
     return all("{" + component + "}" in format_url for component in components)
-
-
-class TileIndex(object):
-    hash_keys = ("depth", "row", "col", "zoom_level", "height", "width")
-    url_keys = ("depth", "row", "col", "zoom_level")
-    comparable_keys = ("zoom_level", "height", "width")
-
-    def __init__(self, depth, row, col, zoom_level, height, width):
-        """
-
-        Parameters
-        ----------
-        depth : int
-            z-index
-        row : int
-            y-index
-        col : int
-            x-index
-        zoom_level : int
-        height : int
-            Scaled pixels
-        width : int
-            Scaled pixels
-        """
-        self.depth = depth
-        self.row = row
-        self.col = col
-        self.zoom_level = zoom_level  # todo: not actually necessary?
-        self.height = height
-        self.width = width
-
-    @property
-    def coords(self):
-        """
-        Calculate the coordinates of the tile's upper left corner, in scaled stack coordinates.
-
-        Returns
-        -------
-        dict
-        """
-        return {
-            "x": self.width * self.col,
-            "y": self.height * self.row,
-            "z": self.depth,
-        }
-
-    def is_comparable(self, other):
-        return all(
-            getattr(self, key) == getattr(other, key, None)
-            for key in self.comparable_keys
-        )
-
-    @property
-    def url_kwargs(self):
-        return {key: getattr(self, key) for key in self.url_keys}
-
-    def __repr__(self):
-        return "TileIndex({})".format(
-            ", ".join("{}={}".format(key, getattr(self, key)) for key in self.hash_keys)
-        )
-
-    def __hash__(self):
-        return hash(tuple(getattr(self, name) for name in self.hash_keys))
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
 
 
 class TileCache(object):

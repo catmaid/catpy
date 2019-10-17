@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
+from pkg_resources import parse_version
 from warnings import warn
 from copy import deepcopy
 
@@ -10,7 +11,7 @@ from networkx.readwrite import json_graph
 from catpy.applications.base import CatmaidClientApplication
 
 
-NX_VERSION_INFO = tuple(int(i) for i in nx.__version__.split("."))
+NX_VERSION_INFO = parse_version(nx.__version__)._key[1]
 
 
 err_msg = (

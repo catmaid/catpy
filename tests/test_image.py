@@ -16,10 +16,7 @@ except ImportError:
     from unittest import mock
 
 from catpy.image import (
-    TileIndex,
-    TileSourceType,
     TileCache,
-    format_urls,
     is_valid_format_url,
     response_to_array,
     as_future,
@@ -30,7 +27,14 @@ from catpy.image import (
     ThreadedImageFetcher,
     DummyResponse,
 )
-from catpy.stacks import StackMirror, Stack, ProjectStack
+from catpy.stacks import (
+    StackMirror,
+    Stack,
+    ProjectStack,
+    TileSourceType,
+    format_urls,
+    TileIndex,
+)
 
 IMAGE_BASE = "http://not-catmaid.org/"
 TILE_SOURCE_TYPE = TileSourceType.FILE_BASED
