@@ -114,11 +114,12 @@ def interpolate_treenodes(parent_xyz, child_xyz, z_depth, z_offset=0):
 
 def deprecated_get(fn):
     """Return a function which is a deprecated alias of another function"""
+
     @wraps(fn)
     def wrapped(*args, **kwargs):
         warnings.warn(
             "get_* methods are generally deprecated where the prefix is not necessary",
-            DeprecationWarning
+            DeprecationWarning,
         )
         return fn(*args, **kwargs)
 

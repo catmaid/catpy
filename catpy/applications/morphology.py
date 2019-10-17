@@ -109,8 +109,26 @@ class SkeletonCompactArbor(NamedTuple):
         node_data = treenode_df(response[0])
         conn_data = lol_to_df(
             response[1],
-            ["treenode", "confidence", "connector_id", "confidence", "treenode_id", "skeleton_id", "relation_id", "relation_id"],
-            [np.uint64, np.uint8, np.uint64, np.uint8, np.uint64, np.uint64, np.uint8, np.uint8]
+            [
+                "treenode",
+                "confidence",
+                "connector_id",
+                "confidence",
+                "treenode_id",
+                "skeleton_id",
+                "relation_id",
+                "relation_id",
+            ],
+            [
+                np.uint64,
+                np.uint8,
+                np.uint64,
+                np.uint8,
+                np.uint64,
+                np.uint64,
+                np.uint8,
+                np.uint8,
+            ],
         )
         return SkeletonCompactArbor(int(skid), node_data, conn_data, response[2])
 
@@ -132,11 +150,11 @@ class MorphologyFetcher(CatmaidClientApplication):
         return SkeletonCompactDetail.from_response(int(skeleton_id), response)
 
     def _compact_skeletons_detail(self, **data):
-        return self.post(
-            (self.project_id, "skeletons", "compact-detail"), data=data
-        )
+        return self.post((self.project_id, "skeletons", "compact-detail"), data=data)
 
-    def compact_skeletons_detail(self, skeleton_ids: Sequence[int], connectors=False, tags=False):
+    def compact_skeletons_detail(
+        self, skeleton_ids: Sequence[int], connectors=False, tags=False
+    ):
         logger.debug("Getting compact-detail for %s skeletons", len(skeleton_ids))
         params = {"skeleton_ids": list(skeleton_ids)}
         if connectors:
@@ -148,21 +166,44 @@ class MorphologyFetcher(CatmaidClientApplication):
             yield SkeletonCompactDetail.from_response(int(skid_str), response)
 
     def _compact_arbor(
-        self, skeleton_id: int, with_nodes: bool, with_connectors: bool, with_tags: bool,
-        ordered: bool = False, with_time: bool = False
+        self,
+        skeleton_id: int,
+        with_nodes: bool,
+        with_connectors: bool,
+        with_tags: bool,
+        ordered: bool = False,
+        with_time: bool = False,
     ):
-        url = (self.project_id, skeleton_id, int(bool(with_nodes)), int(bool(with_connectors)), int(bool(with_tags)))
-        params = {"ordered": set_request_bool(ordered), "with_time": set_request_bool(with_time)}
+        url = (
+            self.project_id,
+            skeleton_id,
+            int(bool(with_nodes)),
+            int(bool(with_connectors)),
+            int(bool(with_tags)),
+        )
+        params = {
+            "ordered": set_request_bool(ordered),
+            "with_time": set_request_bool(with_time),
+        }
         return self.get(url, params)
 
     def compact_arbor(
-        self, skeleton_id: int, with_nodes: bool, with_connectors: bool, with_tags: bool,
-        ordered: bool = False, with_time: bool = False
+        self,
+        skeleton_id: int,
+        with_nodes: bool,
+        with_connectors: bool,
+        with_tags: bool,
+        ordered: bool = False,
+        with_time: bool = False,
     ):
         if with_time:
             raise NotImplementedError("Creation/edit time parsing not implemented")
-        data = self._compact_arbor(skeleton_id, with_nodes, with_connectors, with_tags, ordered, with_time)
+        data = self._compact_arbor(
+            skeleton_id, with_nodes, with_connectors, with_tags, ordered, with_time
+        )
         return SkeletonCompactArbor.from_response(skeleton_id, data)
 
 
-add_deprecated_gets(MorphologyFetcher, "compact_skeleton_detail", "compact_skeletons_detail")
+add_deprecated_gets(
+    MorphologyFetcher, "compact_skeleton_detail", "compact_skeletons_detail"
+)

@@ -320,8 +320,6 @@ class TileCache(object):
 
 
 class ImageFetcher(object):
-    show_progress = imported_tqdm
-
     def __init__(
         self,
         stack,
@@ -380,8 +378,6 @@ class ImageFetcher(object):
                 for name in ("resolution", "translation", "orientation")
             ]
         )
-
-        self.tqdm = tqdm if self.show_progress else DummyTqdm
 
         self._tile_cache = TileCache(cache_items, cache_bytes)
 
@@ -651,9 +647,7 @@ class ImageFetcher(object):
             "unit": "tiles",
             "desc": "Downloading tiles",
         }
-        for src_tile, tile_index in self.tqdm(
-            self._iter_tiles(tile_indices), **tqdm_kwargs
-        ):
+        for src_tile, tile_index in tqdm(self._iter_tiles(tile_indices), **tqdm_kwargs):
             self._tile_cache[tile_index] = src_tile
             self._insert_tile_into_arr(
                 tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out

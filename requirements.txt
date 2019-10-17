@@ -9,6 +9,7 @@ pandas==0.25.1
 
 # dev
 
+black==19.3b0
 bump2version==0.5.11
 coverage==4.5.4
 cryptography==2.7

@@ -61,5 +61,7 @@ class StackFetcher(CatmaidClientApplication):
 
     def stack_group(self, group_id):
         data = self._stack_group(group_id)
-        data["stacks"] = sorted((StackInGroup(**d) for d in data["stacks"]), key=lambda s: s.position)
+        data["stacks"] = sorted(
+            (StackInGroup(**d) for d in data["stacks"]), key=lambda s: s.position
+        )
         return StackGroup(**data)

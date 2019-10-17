@@ -3,6 +3,7 @@ import sys
 try:
     from tqdm import tqdm
 except ImportError:
+
     class tqdm(object):
         def __init__(self, iterable, *args, **kwargs):
             self.iterable = iterable
