@@ -6,6 +6,9 @@ History
 In progress
 -----------
 
+* Drop networkx 1
+* Drop python < 3.6
+* MorphologyFetcher, StackFetcher
 
 0.3.0 (2019-01-11)
 ------------------

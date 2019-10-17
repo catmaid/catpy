@@ -26,8 +26,7 @@ def lol_to_df(data, columns, dtypes=None):
         col_dtype = zip(columns, (dtypes for _ in columns))
 
     col_data = {col: pd.array(col_data[col], dtype=dtype) for col, dtype in col_dtype}
-    df = pd.DataFrame(col_data)
-    return df[columns]  # < py36, dict ordering
+    return pd.DataFrame(col_data)
 
 
 def interpolate_node_locations(parent_xyz, child_xyz, z_res=1, z_offset=0):
