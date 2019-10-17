@@ -68,7 +68,7 @@ class SkeletonCompactDetail(NamedTuple):
     id: int
     treenodes: pd.DataFrame
     connectors: pd.DataFrame
-    tags: Dict[int, List[str]]
+    tags: Dict[str, List[int]]
 
     @classmethod
     def from_response(cls, skid, response):
