@@ -17,7 +17,6 @@ except ImportError:
 
 from catpy.image import (
     TileIndex,
-    StackMirror,
     TileSourceType,
     TileCache,
     format_urls,
@@ -26,13 +25,12 @@ from catpy.image import (
     as_future,
     fill_tiled_cuboid,
     dict_subtract,
-    Stack,
     ImageFetcher,
     ROIMode,
-    ProjectStack,
     ThreadedImageFetcher,
     DummyResponse,
 )
+from catpy.stacks import StackMirror, Stack, ProjectStack
 
 IMAGE_BASE = "http://not-catmaid.org/"
 TILE_SOURCE_TYPE = TileSourceType.FILE_BASED
