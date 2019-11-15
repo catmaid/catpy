@@ -109,14 +109,14 @@ class SkeletonCompactArbor(NamedTuple):
         conn_data = lol_to_df(
             response[1],
             [
-                "treenode",
-                "confidence",
-                "connector_id",
-                "confidence",
-                "treenode_id",
-                "skeleton_id",
-                "relation_id",
-                "relation_id",
+                "treenode_1",
+                "confidence_1",
+                "connector",
+                "confidence_2",
+                "treenode_2",
+                "skeleton_2",
+                "relation_1",
+                "relation_2",
             ],
             [
                 np.uint64,
