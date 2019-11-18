@@ -9,6 +9,7 @@ In progress
 * Drop networkx 1
 * Drop python < 3.6
 * MorphologyFetcher, StackFetcher
+* More flexible NameResolver type checks
 
 0.3.0 (2019-01-11)
 ------------------

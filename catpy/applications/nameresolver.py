@@ -1,6 +1,5 @@
 from __future__ import unicode_literals, absolute_import
 import logging
-
 from functools import lru_cache
 
 from catpy.exceptions import NoMatchingNamesException, MultipleMatchingNamesException
@@ -10,26 +9,38 @@ from .base import CatmaidClientApplication
 logger = logging.getLogger(__name__)
 
 
+def is_name():
+    pass
+
+
+def is_id():
+    pass
+
+
 def name_to_id(fn):
     def wrapper(instance, id_or_name, *args, **kwargs):
-        if isinstance(id_or_name, int):
-            return id_or_name
-        elif isinstance(id_or_name, str):
-            return fn(instance, id_or_name, *args, **kwargs)
-        else:
-            raise TypeError("Argument was neither integer ID nor string name")
+        try:
+            return int(id_or_name)
+        except ValueError:
+            if isinstance(id_or_name, str):
+                return fn(instance, id_or_name, *args, **kwargs)
+
+        raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
 
     return wrapper
 
 
 def id_to_name(fn):
     def wrapper(instance, id_or_name, *args, **kwargs):
-        if isinstance(id_or_name, str):
-            return id_or_name
-        elif isinstance(id_or_name, int):
-            return fn(instance, id_or_name, *args, **kwargs)
+        try:
+            int_id = int(id_or_name)
+        except ValueError:
+            if isinstance(id_or_name, str):
+                return id_or_name
+            else:
+                raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
         else:
-            raise TypeError("Argument was neither integer ID nor string name")
+            return fn(instance, int_id, *args, **kwargs)
 
     return wrapper
 
