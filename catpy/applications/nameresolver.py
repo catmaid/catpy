@@ -196,6 +196,20 @@ class NameResolver(CatmaidClientApplication):
     def get_annotation_name(self, annotation_id):
         return self._list_annotations().id_to_name[int(annotation_id)]
 
+    @lru_cache(1)
+    def _list_volumes(self):
+        logger.debug("Populating _list_volumes cache")
+        response = self.get((self.project_id, "volumes"))
+        return NameIdMapping((name, id_) for name, id_, *_ in response["data"])
+
+    @id_to_name
+    def get_volume_name(self, volume_id):
+        return self._list_volumes().id_to_name[int(volume_id)]
+
+    @name_to_id
+    def get_volume_id(self, volume_name):
+        return self._list_volumes().name_to_id[volume_name]
+
     def clear_cache(self, *names):
         if not names:
             names = [k for k, v in self.__dict__.items() if hasattr(v, "cache_clear")]
