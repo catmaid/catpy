@@ -200,7 +200,7 @@ class NameResolver(CatmaidClientApplication):
     def _list_volumes(self):
         logger.debug("Populating _list_volumes cache")
         response = self.get((self.project_id, "volumes"))
-        return NameIdMapping((name, id_) for name, id_, *_ in response["data"])
+        return NameIdMapping((name, id_) for id_, name, *_ in response["data"])
 
     @id_to_name
     def get_volume_name(self, volume_id):
