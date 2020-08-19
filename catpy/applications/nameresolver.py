@@ -25,7 +25,9 @@ def name_to_id(fn):
             if isinstance(id_or_name, str):
                 return fn(instance, id_or_name, *args, **kwargs)
 
-        raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
+        raise TypeError(
+            f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})"
+        )
 
     return wrapper
 
@@ -38,7 +40,9 @@ def id_to_name(fn):
             if isinstance(id_or_name, str):
                 return id_or_name
             else:
-                raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
+                raise TypeError(
+                    f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})"
+                )
         else:
             return fn(instance, int_id, *args, **kwargs)
 
