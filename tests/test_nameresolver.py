@@ -7,12 +7,8 @@ except ImportError:
 
 import pytest
 
-from catpy.applications.nameresolver import (
-    NameResolver,
-    MultipleMatchingNamesException,
-    NoMatchingNamesException,
-)
-
+from catpy.applications.nameresolver import NameResolver
+from catpy.exceptions import NoMatchingNamesException, MultipleMatchingNamesException
 
 PROJECT_ID = 1
 
@@ -84,3 +80,6 @@ def test_get_user_id_name(name_resolver):
 
 def test_get_user_id_login(name_resolver):
     assert name_resolver.get_user_id("user_four") == 4
+
+def test_int_or_str():
+

@@ -2,10 +2,9 @@ from __future__ import absolute_import
 
 import pytest
 
-from catpy.client import ConnectorRelation, CatmaidClient
+from catpy.client import CatmaidClient
+from catpy.enums import ConnectorRelation
 from catpy.applications import RelationIdentifier
-
-from tests.common import relation_identifier, connectors_types  # noqa
 
 
 def test_from_id(relation_identifier):  # noqa

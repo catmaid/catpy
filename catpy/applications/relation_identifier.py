@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 from collections import defaultdict
 
-from catpy.client import ConnectorRelation
-from catpy.applications import CatmaidClientApplication
+from ..enums import ConnectorRelation
+from .base import CatmaidClientApplication
 
 
 class RelationIdentifier(CatmaidClientApplication):
@@ -13,17 +13,20 @@ class RelationIdentifier(CatmaidClientApplication):
 
     The mappings are retrieved on a per-project basis.
     """
+
     id_to_relation = defaultdict(dict)
     relation_to_id = defaultdict(dict)
 
     def _check_pid(self):
         if self.project_id is None:
-            raise RuntimeError("No project ID defined; cannot get relation name-id mappings")
+            raise RuntimeError(
+                "No project ID defined; cannot get relation name-id mappings"
+            )
         else:
             return self.project_id
 
     def _fetch_mappings(self, project_id):
-        return self.get((project_id, 'connectors', 'types'))
+        return self.get((project_id, "connectors", "types"))
 
     def populate_mappings(self, project_id):
         """Populate the id-relation mappings cache for the given project"""

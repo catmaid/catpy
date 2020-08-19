@@ -1,50 +1,64 @@
 from __future__ import unicode_literals, absolute_import
-from six import string_types
+import logging
+from functools import lru_cache
 
-try:
-    from functools import lru_cache
-except ImportError:
-    from backports.functools_lru_cache import lru_cache
+from catpy.exceptions import NoMatchingNamesException, MultipleMatchingNamesException
+from .base import CatmaidClientApplication
 
-from catpy.applications.base import CatmaidClientApplication
+
+logger = logging.getLogger(__name__)
+
+
+def is_name():
+    pass
+
+
+def is_id():
+    pass
 
 
 def name_to_id(fn):
-
     def wrapper(instance, id_or_name, *args, **kwargs):
-        if isinstance(id_or_name, int):
-            return id_or_name
-        elif isinstance(id_or_name, string_types):
-            return fn(instance, id_or_name, *args, **kwargs)
-        else:
-            raise TypeError("Argument was neither integer ID nor string name")
+        try:
+            return int(id_or_name)
+        except ValueError:
+            if isinstance(id_or_name, str):
+                return fn(instance, id_or_name, *args, **kwargs)
+
+        raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
 
     return wrapper
 
 
 def id_to_name(fn):
-
     def wrapper(instance, id_or_name, *args, **kwargs):
-        if isinstance(id_or_name, string_types):
-            return id_or_name
-        elif isinstance(id_or_name, int):
-            return fn(instance, id_or_name, *args, **kwargs)
+        try:
+            int_id = int(id_or_name)
+        except ValueError:
+            if isinstance(id_or_name, str):
+                return id_or_name
+            else:
+                raise TypeError(f"Argument was neither integer ID nor string name: {type(id_or_name)}({id_or_name})")
         else:
-            raise TypeError("Argument was neither integer ID nor string name")
+            return fn(instance, int_id, *args, **kwargs)
 
     return wrapper
 
 
-class NameResolverException(ValueError):
-    pass
+class NameIdMapping:
+    def __init__(self, name_id_pairs):
+        self.name_to_id = dict()
+        self.id_to_name = dict()
 
+        counter = 0
+        for name, id_ in name_id_pairs:
+            id_ = int(id_)
+            self.name_to_id[name] = id_
+            self.id_to_name[id_] = name
+            counter += 1
 
-class NoMatchingNamesException(NameResolverException):
-    pass
-
-
-class MultipleMatchingNamesException(NameResolverException):
-    pass
+        if counter != len(self.name_to_id) or counter != len(self.id_to_name):
+            raise ValueError("Non-unique names or IDs; cannot make 2-way mapping")
 
 
 class NameResolver(CatmaidClientApplication):
@@ -83,7 +97,8 @@ class NameResolver(CatmaidClientApplication):
             )
 
     @lru_cache(1)
-    def _get_stacks(self):
+    def _stacks(self):
+        logger.debug("Populating _stacks cache")
         return self.get((self.project_id, "stacks"))
 
     @name_to_id
@@ -100,14 +115,15 @@ class NameResolver(CatmaidClientApplication):
         int
         """
         matching_ids = set()
-        for stack in self._get_stacks():
+        for stack in self._stacks():
             if stack["title"] == title:
                 matching_ids.add(stack["id"])
 
         return self._ensure_one(matching_ids, title, "stack")
 
     @lru_cache(1)
-    def _get_user_list(self):
+    def _user_list(self):
+        logger.debug("Populating _user_list cache")
         return self.get("user-list")
 
     @name_to_id
@@ -123,7 +139,7 @@ class NameResolver(CatmaidClientApplication):
         int
         """
         matching_ids = set()
-        for user in self._get_user_list():
+        for user in self._user_list():
             if name in [user["login"], user["full_name"]]:
                 matching_ids.add(user["id"])
 
@@ -141,7 +157,9 @@ class NameResolver(CatmaidClientApplication):
         dict of int to str
         """
         # todo: lru cache
-        return self.post((self.project_id, "skeleton", "neuronnames"), {"skids": skeleton_ids})
+        return self.post(
+            (self.project_id, "skeleton", "neuronnames"), {"skids": skeleton_ids}
+        )
 
     @id_to_name
     def get_neuron_name(self, skeleton_id):
@@ -158,4 +176,43 @@ class NameResolver(CatmaidClientApplication):
         -------
         str
         """
-        return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))["neuronname"]
+        return self.get((self.project_id, "skeleton", skeleton_id, "neuronname"))[
+            "neuronname"
+        ]
+
+    @lru_cache(1)
+    def _list_annotations(self):
+        logger.debug("Populating _list_annotations cache")
+        response = self.get((self.project_id, "annotations"))
+        return NameIdMapping(
+            (obj["name"], obj["id"]) for obj in response["annotations"]
+        )
+
+    @name_to_id
+    def get_annotation_id(self, annotation_name):
+        return self._list_annotations().name_to_id[annotation_name]
+
+    @id_to_name
+    def get_annotation_name(self, annotation_id):
+        return self._list_annotations().id_to_name[int(annotation_id)]
+
+    @lru_cache(1)
+    def _list_volumes(self):
+        logger.debug("Populating _list_volumes cache")
+        response = self.get((self.project_id, "volumes"))
+        return NameIdMapping((name, id_) for id_, name, *_ in response["data"])
+
+    @id_to_name
+    def get_volume_name(self, volume_id):
+        return self._list_volumes().id_to_name[int(volume_id)]
+
+    @name_to_id
+    def get_volume_id(self, volume_name):
+        return self._list_volumes().name_to_id[volume_name]
+
+    def clear_cache(self, *names):
+        if not names:
+            names = [k for k, v in self.__dict__.items() if hasattr(v, "cache_clear")]
+
+        for name in names:
+            getattr(self, name).cache_clear()

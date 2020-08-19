@@ -52,8 +52,12 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .cache/
 	rm -fr .pytest_cache/
 
+fmt:
+	black catpy tests setup.py
+
 lint: ## check style with flake8
 	flake8 catpy tests
+	black --check catpy tests setup.py
 
 test: ## run tests quickly with the default Python
 	py.test

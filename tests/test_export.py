@@ -17,10 +17,8 @@ except ImportError:
     from mock import Mock
 
 from tests.constants import FIXTURE_ROOT
-from tests.common import connectors_types, relation_identifier  # noqa
 
-
-nx_version = tuple(int(i) for i in nx.__version__.split('.'))
+nx_version = tuple(int(i) for i in nx.__version__.split("."))
 
 
 def assert_same_graph(g1, g2):
@@ -42,7 +40,7 @@ def nodelink_json(request):
 
 @pytest.fixture
 def expected_graph():
-    version = '1-11' if nx_version < (2, 0) else '2-2'
+    version = "1-11" if nx_version < (2, 0) else "2-2"
 
     fpath = os.path.join(FIXTURE_ROOT, "nodelink-nx{}.json".format(version))
     with open(fpath) as f:
@@ -65,7 +63,7 @@ def test_reads_nodelinks(nodelink_json, export_widget, expected_graph):
 
 
 def test_converts():
-    v1, v2 = [get_json(v) for v in ['1-11', '2-2']]
+    v1, v2 = [get_json(v) for v in ["1-11", "2-2"]]
     assert convert_nodelink_data(v1) == v2
 
 
@@ -83,7 +81,9 @@ def test_nx2_convert_nowarn(nodelink_json, expected_graph):
     assert_same_graph(json_graph.node_link_graph(d), expected_graph)
 
 
-@pytest.mark.skipif(nx_version >= (2, 0), reason="Don't need to run this on networkx 2+")
+@pytest.mark.skipif(
+    nx_version >= (2, 0), reason="Don't need to run this on networkx 2+"
+)
 def test_nx1_convert_warn(nodelink_json):
     # with pytest.warns(UserWarning):  # this assertion fails even though the warning is raised!
     d = convert_nodelink_data(nodelink_json)
@@ -94,9 +94,9 @@ def test_nx1_convert_warn(nodelink_json):
 
 def requirement_to_op_ver(s):
     op = s[:2]
-    assert set('<>=').issuperset(op)
+    assert set("<>=").issuperset(op)
     ver = s[2:]
-    assert set('0123456789.').issuperset(ver)
+    assert set("0123456789.").issuperset(ver)
     return op, ver
 
 

@@ -7,76 +7,45 @@ from io import BytesIO
 from collections import OrderedDict
 
 from requests import HTTPError
-from timeit import timeit
 import itertools
 from warnings import warn
 
 from concurrent.futures import Future, as_completed
-from enum import IntEnum, Enum
-
-import sys
-from six import string_types
 
 from PIL import Image
 import numpy as np
 import requests
 from requests_futures.sessions import FuturesSession
 
-from catpy import CoordinateTransformer
-from catpy.client import StackOrientation
+from catpy.spatial import StackOrientation, CoordinateTransformer
+from catpy.stacks import StackMirror, ProjectStack, TileIndex
+from catpy.util import StrEnum
+from catpy.compat import tqdm
 
 logger = logging.getLogger()
-
-
-class DummyTqdm(object):
-    def __init__(self, iterable, *args, **kwargs):
-        self.iterable = iterable
-
-    def __iter__(self):
-        return iter(self.iterable)
-
-    def write(self, s):
-        sys.stdout.write(s)
-
-
-try:
-    from tqdm import tqdm
-    imported_tqdm = True
-except ImportError:
-    warn('Install tqdm for tile download progress bars')
-    tqdm = DummyTqdm
-    imported_tqdm = False
 
 
 DEFAULT_CACHE_ITEMS = 10
 DEFAULT_CACHE_BYTES = None
 THREADS = 10
 
-SUPPORTED_CONTENT_TYPES = {
-    'image/png',
-    'image/jpeg'
-}
-
-
-class StrEnum(Enum):
-    def __str__(self):
-        return str(self.value)
+SUPPORTED_CONTENT_TYPES = {"image/png", "image/jpeg"}
 
 
 class Orientation3D(StrEnum):
-    NUMPY = 'zyx'
-    C = 'zyx'
-    ZYX = 'zyx'
-    VIGRA = 'xyz'
-    FORTRAN = 'xyz'
-    XYZ = 'xyz'
+    NUMPY = "zyx"
+    C = "zyx"
+    ZYX = "zyx"
+    VIGRA = "xyz"
+    FORTRAN = "xyz"
+    XYZ = "xyz"
 
 
 DEFAULT_3D_ORIENTATION = Orientation3D.NUMPY
 
 
 class BrokenSliceHandling(StrEnum):
-    FILL = 'fill'
+    FILL = "fill"
     # ABOVE = 'above'
     # BELOW = 'below'
     # CLOSEST = 'closest'
@@ -87,64 +56,33 @@ DEFAULT_BROKEN_SLICE_HANDLING = BrokenSliceHandling.FILL
 
 
 class ROIMode(StrEnum):
-    STACK = 'stack'
-    SCALED = 'scaled'
-    PROJECT = 'project'
+    STACK = "stack"
+    SCALED = "scaled"
+    PROJECT = "project"
 
 
 DEFAULT_ROI_MODE = ROIMode.STACK
 
 
-class TileSourceType(IntEnum):
-    """https://catmaid.readthedocs.io/en/stable/tile_sources.html"""
-    FILE_BASED = 1
-    REQUEST_QUERY = 2
-    HDF5 = 3
-    FILE_BASED_WITH_ZOOM_DIRS = 4
-    DIR_BASED = 5
-    DVID_IMAGEBLK = 6
-    RENDER_SERVICE = 7
-    DVID_IMAGETILE = 8
-    FLIXSERVER = 9
-    H2N5_TILES = 10
-
-    def format(self, **kwargs):
-        try:
-            format_url = format_urls[self]
-        except KeyError:
-            raise ValueError(
-                "{} is not supported by TileFetcher, supported types are below:\n\t{}".format(
-                    self, '\n\t'.join(str(k) for k in sorted(format_urls))
-                )
-            )
-        return format_url.format(**kwargs)
-
-
-format_urls = {
-    TileSourceType.FILE_BASED: '{image_base}{{depth}}/{{row}}_{{col}}_{{zoom_level}}.{file_extension}',
-    TileSourceType.FILE_BASED_WITH_ZOOM_DIRS: '{image_base}{{depth}}/{{zoom_level}}/{{row}}_{{col}}.{file_extension}',
-    TileSourceType.DIR_BASED: '{image_base}{{zoom_level}}/{{depth}}/{{row}}/{{col}}.{file_extension}',
-    TileSourceType.RENDER_SERVICE: '{image_base}largeDataTileSource/{tile_width}/{tile_height}/'
-                                   '{{zoom_level}}/{{depth}}/{{row}}/{{col}}.{file_extension}',
-    TileSourceType.FLIXSERVER: '{image_base}{{depth}}/{{row}}_{{col}}_{{zoom_level}}.{file_extension}',
-}
-
-
 def response_to_array(response, pil_kwargs=None):
     response.raise_for_status()
-    content_type = response.headers['Content-Type']
+    content_type = response.headers["Content-Type"]
 
     if content_type in SUPPORTED_CONTENT_TYPES:
-        buffer = BytesIO(response.content)  # opening directly from raw response doesn't work for JPEGs
+        buffer = BytesIO(
+            response.content
+        )  # opening directly from raw response doesn't work for JPEGs
         raw_img = Image.open(buffer)
         pil_kwargs = dict(pil_kwargs) if pil_kwargs else dict()
-        pil_kwargs['mode'] = pil_kwargs.get('mode', 'L')
+        pil_kwargs["mode"] = pil_kwargs.get("mode", "L")
         grey_img = raw_img.convert(**pil_kwargs)
         return np.array(grey_img)
     else:
-        raise NotImplementedError('Image fetching is only implemented for greyscale PNG and JPEG, not {}'.format(
-            content_type.upper().split('/')[1]
-        ))
+        raise NotImplementedError(
+            "Image fetching is only implemented for greyscale PNG and JPEG, not {}".format(
+                content_type.upper().split("/")[1]
+            )
+        )
 
 
 def response_to_array_callback(session, response):
@@ -161,11 +99,21 @@ def as_future(item):
 
 def fill_tiled_cuboid(min_tile_idx, max_tile_idx):
     if not min_tile_idx.is_comparable(max_tile_idx):
-        raise ValueError('Tile indices are not comparable (different zoom or size)')
+        raise ValueError("Tile indices are not comparable (different zoom or size)")
 
-    iters = [range(getattr(min_tile_idx, name), getattr(max_tile_idx, name) + 1) for name in ('depth', 'row', 'col')]
+    iters = [
+        range(getattr(min_tile_idx, name), getattr(max_tile_idx, name) + 1)
+        for name in ("depth", "row", "col")
+    ]
     return {
-        TileIndex(depth, row, col, min_tile_idx.zoom_level, min_tile_idx.height, min_tile_idx.width)
+        TileIndex(
+            depth,
+            row,
+            col,
+            min_tile_idx.zoom_level,
+            min_tile_idx.height,
+            min_tile_idx.width,
+        )
         for depth, row, col in itertools.product(*iters)
     }
 
@@ -192,276 +140,15 @@ def is_valid_format_url(format_url):
     -------
     bool
     """
-    components = ['image_base', '{depth}', '{zoom_level}', '{row}', '{col}', 'file_extension']
-    return all('{' + component + '}' in format_url for component in components)
-
-
-class TileIndex(object):
-    hash_keys = ('depth', 'row', 'col', 'zoom_level', 'height', 'width')
-    url_keys = ('depth', 'row', 'col', 'zoom_level')
-    comparable_keys = ('zoom_level', 'height', 'width')
-
-    def __init__(self, depth, row, col, zoom_level, height, width):
-        """
-
-        Parameters
-        ----------
-        depth : int
-            z-index
-        row : int
-            y-index
-        col : int
-            x-index
-        zoom_level : int
-        height : int
-            Scaled pixels
-        width : int
-            Scaled pixels
-        """
-        self.depth = depth
-        self.row = row
-        self.col = col
-        self.zoom_level = zoom_level  # todo: not actually necessary?
-        self.height = height
-        self.width = width
-
-    @property
-    def coords(self):
-        """
-        Calculate the coordinates of the tile's upper left corner, in scaled stack coordinates.
-
-        Returns
-        -------
-        dict
-        """
-        return {
-            'x': self.width * self.col,
-            'y': self.height * self.row,
-            'z': self.depth
-        }
-
-    def is_comparable(self, other):
-        return all(getattr(self, key) == getattr(other, key, None) for key in self.comparable_keys)
-
-    @property
-    def url_kwargs(self):
-        return {key: getattr(self, key) for key in self.url_keys}
-
-    def __repr__(self):
-        return 'TileIndex({})'.format(', '.join('{}={}'.format(key, getattr(self, key)) for key in self.hash_keys))
-
-    def __hash__(self):
-        return hash(tuple(getattr(self, name) for name in self.hash_keys))
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-
-class StackMirror(object):
-    def __init__(
-        self, image_base, tile_height, tile_width, tile_source_type, file_extension, title=None, position=0, auth=None
-    ):
-        """
-        Representation of CATMAID stack mirror
-
-        Parameters
-        ----------
-        image_base : str
-        tile_width : int
-        tile_height : int
-        tile_source_type : int or TileSourceType
-        file_extension : str
-        title : str
-        position : int
-        """
-        self.auth = auth
-
-        self.image_base = image_base if image_base.endswith('/') else image_base + '/'
-        self.tile_height = int(tile_height)
-        self.tile_width = int(tile_width)
-        self.tile_source_type = TileSourceType(tile_source_type)
-        self.file_extension = file_extension[1:] if file_extension.startswith('.') else file_extension
-        self.title = str(title)
-        self.position = int(position)
-
-        self.format_url = self.tile_source_type.format(**self.__dict__)
-
-    def generate_url(self, tile_index):
-        """
-        Generate absolute URL to desired image
-
-        Parameters
-        ----------
-        tile_index : TileIndex
-
-        Returns
-        -------
-        str
-        """
-        if tile_index.height != self.tile_height and tile_index.width != self.tile_width:
-            raise ValueError('Given TileIndex is not compatible with this stack mirror')
-        return self.format_url.format(**tile_index.url_kwargs)
-
-    def get_tile_index(self, scaled_coords, zoom_level=0):
-        """
-
-        Parameters
-        ----------
-        scaled_coords : dict
-        zoom_level : int
-
-        Returns
-        -------
-        tuple of (TileIndex, dict)
-            Index of tile on which this pixel appears, and its offset from the top left shallow corner of that tile
-        """
-        tile_idx = TileIndex(
-            depth=int(scaled_coords['z']),
-            row=int(scaled_coords['y'] / self.tile_height),
-            col=int(scaled_coords['x'] / self.tile_width),
-            zoom_level=zoom_level,
-            height=self.tile_height,
-            width=self.tile_width
-        )
-
-        tile_coords = tile_idx.coords
-        offset = {dim: scaled_coords[dim] - tile_coords[dim] for dim in 'xyz'}
-
-        return tile_idx, offset
-
-    @classmethod
-    def from_dict(cls, d):
-        """
-        Instantiate StackMirror from one of the items in the 'mirrors' list supplied under
-        CATMAID's {project_id}/stack/{stack_id}/info endpoint
-
-        Parameters
-        ----------
-        d : dict
-
-        Returns
-        -------
-        StackMirror
-        """
-        return cls(
-            d['image_base'], d['tile_height'], d['tile_width'], d['tile_source_type'],
-            d['file_extension'], d['title'], d['position']
-        )
-
-
-class Stack(object):
-    def __init__(self, dimension, broken_slices=None, canary_location=None):
-        """
-        Representation of an image stack which could be used by CATMAID.
-
-        Parameters
-        ----------
-        dimension : dict
-            {'x': x, 'y': y, 'z': z}, size of stack in voxels
-        broken_slices : iterable of int
-            z-slice indices which are missing from stack
-        canary_location : dict
-            {'x': x, 'y': y, 'z': z}
-        """
-        self.dimension = dimension
-        self.broken_slices = {int(s) for s in broken_slices} if broken_slices else set()
-        self.canary_location = canary_location or {'x': 0, 'y': 0, 'z': 0}
-        self.mirrors = []
-
-    def get_fastest_mirror(self, timeout=1, reps=1, normalise_by_tile_size=True):
-        """
-        Determine the fastest accessible mirror.
-
-        Parameters
-        ----------
-        timeout : float
-            Timeout in seconds for each request to the tile server
-        reps : int
-            How many times to fetch the canary tile, for robustness
-        normalise_by_tile_size : bool
-            Whether to normalise the fetch time by the tile size used by this mirror (to get per-pixel response time)
-
-        Returns
-        -------
-        StackMirror
-        """
-        response_times = []
-
-        tqdm_kwargs = {
-            'ncols': 80,
-            'unit': 'mirrors',
-            'desc': 'Checking mirrors'
-        }
-        for mirror in DummyTqdm(self.mirrors, **tqdm_kwargs):
-            tile_index, _ = mirror.get_tile_index(self.canary_location)
-            url = mirror.generate_url(tile_index)
-
-            try:
-                response_time = timeit(lambda: requests.get(url, timeout=timeout), number=reps)
-                if normalise_by_tile_size:
-                    response_time /= tile_index.width * tile_index.height
-                response_times.append((mirror, response_time))
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-                continue
-
-        if not response_times:
-            raise ValueError('No reachable mirrors found')
-
-        return min(response_times, key=lambda pair: pair[1])[0]
-
-
-class ProjectStack(Stack):
-    orientation_choices = {
-        0: "xy",
-        1: "xz",
-        2: "zy",
-    }
-
-    def __init__(self, dimension, translation, resolution, orientation, broken_slices=None, canary_location=None):
-        """
-        Representation of an image stack as it pertains to a CATMAID project
-
-        Parameters
-        ----------
-        dimension : dict
-            {'x': x, 'y': y, 'z': z}, size of stack in voxels
-        translation : dict
-            {'x': x, 'y': y, 'z': z}, origin of stack in project space
-        resolution : dict
-            {'x': x, 'y': y, 'z': z}, size of stack voxels in project units
-        orientation : {'xy', 'xz' 'zy'}
-        broken_slices : iterable of int
-            z-slice indices which are missing from stack
-        canary_location : dict
-            {'x': x, 'y': y, 'z': z}
-        """
-        super(ProjectStack, self).__init__(dimension, broken_slices, canary_location)
-        self.translation = translation
-        self.resolution = resolution
-        self.orientation = StackOrientation.from_value(orientation)
-
-    @classmethod
-    def from_stack_info(cls, stack_info):
-        """
-        Instantiate Stack from the response supplied by CATMAID's {project_id}/stack/{stack_id}/info endpoint
-
-        Parameters
-        ----------
-        stack_info : dict
-
-        Returns
-        -------
-        Stack
-        """
-        stack = cls(
-            stack_info['dimension'], stack_info['translation'], stack_info['resolution'],
-            stack_info['orientation'], stack_info['broken_slices'],
-            stack_info['canary_location']
-        )
-        mirrors = [StackMirror.from_dict(d) for d in stack_info['mirrors']]
-
-        stack.mirrors.extend(sorted(mirrors, key=lambda m: (m.position, m.title)))
-        return stack
+    components = [
+        "image_base",
+        "{depth}",
+        "{zoom_level}",
+        "{row}",
+        "{col}",
+        "file_extension",
+    ]
+    return all("{" + component + "}" in format_url for component in components)
 
 
 class TileCache(object):
@@ -530,18 +217,23 @@ class TileCache(object):
 
 
 class ImageFetcher(object):
-    show_progress = imported_tqdm
-
     def __init__(
-        self, stack, output_orientation=DEFAULT_3D_ORIENTATION, preferred_mirror=None, timeout=1,
-        cache_items=DEFAULT_CACHE_ITEMS, cache_bytes=DEFAULT_CACHE_BYTES,
-        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0, auth=None
+        self,
+        stack,
+        output_orientation=DEFAULT_3D_ORIENTATION,
+        preferred_mirror=None,
+        timeout=1,
+        cache_items=DEFAULT_CACHE_ITEMS,
+        cache_bytes=DEFAULT_CACHE_BYTES,
+        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING,
+        cval=0,
+        auth=None,
     ):
         """
 
         Parameters
         ----------
-        stack : Stack
+        stack : catpy.stacks.Stack
         output_orientation : str or Orientation3D
             default Orientation3D.ZYX
         preferred_mirror : int or str or StackMirror, optional
@@ -561,8 +253,8 @@ class ImageFetcher(object):
             defined ``auth``. Default None
         """
         self.stack = stack
-        self.depth_dimension = 'z'
-        self.source_orientation = self.depth_dimension + 'yx'
+        self.depth_dimension = "z"
+        self.source_orientation = self.depth_dimension + "yx"
 
         self.broken_slice_handling = BrokenSliceHandling(broken_slice_handling)
 
@@ -578,10 +270,11 @@ class ImageFetcher(object):
         self.timeout = timeout
 
         self.coord_trans = CoordinateTransformer(
-            *[getattr(self.stack, name, None) for name in ('resolution', 'translation', 'orientation')]
+            *[
+                getattr(self.stack, name, None)
+                for name in ("resolution", "translation", "orientation")
+            ]
         )
-
-        self.tqdm = tqdm if self.show_progress else DummyTqdm
 
         self._tile_cache = TileCache(cache_items, cache_bytes)
 
@@ -605,8 +298,10 @@ class ImageFetcher(object):
     def mirror(self):
         if not self._mirror:
             warn(
-                'No mirror set: falling back to {}, which may not be accessible.'
-                'You might want to run set_fastest_mirror.'.format(self.stack.mirrors[0].title)
+                "No mirror set: falling back to {}, which may not be accessible."
+                "You might want to run set_fastest_mirror.".format(
+                    self.stack.mirrors[0].title
+                )
             )
             m = self.stack.mirrors[0]
             self._session.auth = m.auth or self.auth
@@ -620,7 +315,7 @@ class ImageFetcher(object):
 
         Parameters
         ----------
-        preferred_mirror : str or int or StackMirror
+        preferred_mirror : str or int or catpy.stacks.StackMirror
         """
         if preferred_mirror is None:
             self._mirror = None
@@ -639,27 +334,40 @@ class ImageFetcher(object):
                 matching_mirrors = [m for m in self.stack.mirrors if m.position == pos]
 
                 if not matching_mirrors:
-                    warn('Preferred mirror position {} does not exist, choose from {}'.format(
-                        pos, ', '.join(str(m.position) for m in self.stack.mirrors)
-                    ))
+                    warn(
+                        "Preferred mirror position {} does not exist, choose from {}".format(
+                            pos, ", ".join(str(m.position) for m in self.stack.mirrors)
+                        )
+                    )
                     return
                 elif len(matching_mirrors) > 1:
-                    warn('More than one mirror found for position {}, picking {}'.format(
-                        pos, matching_mirrors[0].title
-                    ))
+                    warn(
+                        "More than one mirror found for position {}, picking {}".format(
+                            pos, matching_mirrors[0].title
+                        )
+                    )
                 self._mirror = matching_mirrors[0]
 
             except (ValueError, TypeError):
 
-                if isinstance(preferred_mirror, string_types):
-                    matching_mirrors = [m for m in self.stack.mirrors if m.title == preferred_mirror]
+                if isinstance(preferred_mirror, str):
+                    matching_mirrors = [
+                        m for m in self.stack.mirrors if m.title == preferred_mirror
+                    ]
                     if not matching_mirrors:
-                        warn('Preferred mirror called {} does not exist, choose from {}'.format(
-                            preferred_mirror, ', '.join(m.title for m in self.stack.mirrors)
-                        ))
+                        warn(
+                            "Preferred mirror called {} does not exist, choose from {}".format(
+                                preferred_mirror,
+                                ", ".join(m.title for m in self.stack.mirrors),
+                            )
+                        )
                         return
                     elif len(matching_mirrors) > 1:
-                        warn('More than one mirror found for title {}, picking first'.format(preferred_mirror))
+                        warn(
+                            "More than one mirror found for title {}, picking first".format(
+                                preferred_mirror
+                            )
+                        )
                     self._mirror = matching_mirrors[0]
 
         if self._mirror is not None and self._mirror.auth:
@@ -693,7 +401,7 @@ class ImageFetcher(object):
         if len(arr.shape) == 2:
             arr = np.expand_dims(arr, 0)
         if len(arr.shape) != 3:
-            raise ValueError('Unknown dimension of volume: should be 2D or 3D')
+            raise ValueError("Unknown dimension of volume: should be 2D or 3D")
         return np.moveaxis(arr, (0, 1, 2), self._dimension_mappings)
 
     def _make_empty_tile(self, width, height=None):
@@ -720,7 +428,10 @@ class ImageFetcher(object):
             pass
 
         if tile_index.depth in self.stack.broken_slices:
-            if self.broken_slice_handling == BrokenSliceHandling.FILL and self.cval is not None:
+            if (
+                self.broken_slice_handling == BrokenSliceHandling.FILL
+                and self.cval is not None
+            ):
                 return self._make_empty_tile(tile_index.width, tile_index.height)
             else:
                 raise NotImplementedError(
@@ -757,11 +468,13 @@ class ImageFetcher(object):
         max_tile, max_offset = self.mirror.get_tile_index(max_pixel, zoom_level)
 
         tile_indices = fill_tiled_cuboid(min_tile, max_tile)
-        src_inner_slicing = {'min': min_offset, 'max': max_offset}
+        src_inner_slicing = {"min": min_offset, "max": max_offset}
 
         return tile_indices, src_inner_slicing
 
-    def _insert_tile_into_arr(self, tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out):
+    def _insert_tile_into_arr(
+        self, tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out
+    ):
         min_col = tile_index.col == min_tile.col
         max_col = tile_index.col == max_tile.col
 
@@ -769,27 +482,33 @@ class ImageFetcher(object):
         max_row = tile_index.row == max_tile.row
 
         tile_slicing_dict = {
-            'z': slice(None),
-            'y': slice(
-                src_inner_slicing['min']['y'] if min_row else None,
-                src_inner_slicing['max']['y'] + 1 if max_row else None
+            "z": slice(None),
+            "y": slice(
+                src_inner_slicing["min"]["y"] if min_row else None,
+                src_inner_slicing["max"]["y"] + 1 if max_row else None,
             ),
-            'x': slice(
-                src_inner_slicing['min']['x'] if min_col else None,
-                src_inner_slicing['max']['x'] + 1 if max_col else None
+            "x": slice(
+                src_inner_slicing["min"]["x"] if min_col else None,
+                src_inner_slicing["max"]["x"] + 1 if max_col else None,
             ),
         }
 
-        tile_slicing = tuple(tile_slicing_dict[dim] for dim in self.source_orientation if dim in 'xy')
+        tile_slicing = tuple(
+            tile_slicing_dict[dim] for dim in self.source_orientation if dim in "xy"
+        )
 
         tgt_tile = self._reorient_volume_src_to_tgt(src_tile[tile_slicing])
 
         untrimmed_topleft = dict_subtract(tile_index.coords, min_tile.coords)
         # location of the top left of the tile in out
         topleft_dict = {
-            'z': untrimmed_topleft['z'],  # we don't trim in Z
-            'y': 0 if min_row else untrimmed_topleft['y'] - src_inner_slicing['min']['y'],
-            'x': 0 if min_col else untrimmed_topleft['x'] - src_inner_slicing['min']['x'],
+            "z": untrimmed_topleft["z"],  # we don't trim in Z
+            "y": 0
+            if min_row
+            else untrimmed_topleft["y"] - src_inner_slicing["min"]["y"],
+            "x": 0
+            if min_col
+            else untrimmed_topleft["x"] - src_inner_slicing["min"]["x"],
         }
         topleft = tuple(topleft_dict[dim] for dim in self.target_orientation)
 
@@ -820,14 +539,16 @@ class ImageFetcher(object):
         max_tile = max(tile_indices, key=lambda idx: (idx.depth, idx.row, idx.col))
 
         tqdm_kwargs = {
-            'total': len(tile_indices),
-            'ncols': 80,
-            'unit': 'tiles',
-            'desc': 'Downloading tiles'
+            "total": len(tile_indices),
+            "ncols": 80,
+            "unit": "tiles",
+            "desc": "Downloading tiles",
         }
-        for src_tile, tile_index in self.tqdm(self._iter_tiles(tile_indices), **tqdm_kwargs):
+        for src_tile, tile_index in tqdm(self._iter_tiles(tile_indices), **tqdm_kwargs):
             self._tile_cache[tile_index] = src_tile
-            self._insert_tile_into_arr(tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out)
+            self._insert_tile_into_arr(
+                tile_index, src_tile, min_tile, max_tile, src_inner_slicing, out
+            )
 
         return out
 
@@ -847,7 +568,9 @@ class ImageFetcher(object):
             return response_to_array(self._session.get(url, timeout=self.timeout))
         except HTTPError as e:
             if e.response.status_code == 404:
-                logger.warning("Tile not found at %s (error 404), returning blank tile", url)
+                logger.warning(
+                    "Tile not found at %s (error 404), returning blank tile", url
+                )
                 return self._make_empty_tile(tile_index.width, tile_index.height)
             else:
                 raise
@@ -877,25 +600,37 @@ class ImageFetcher(object):
         roi_tgt = np.asarray(roi)
 
         if zoom_level != int(zoom_level):
-            raise NotImplementedError('Non-integer zoom level is not supported')
+            raise NotImplementedError("Non-integer zoom level is not supported")
 
         if roi_mode == ROIMode.PROJECT:
             if not isinstance(self.stack, ProjectStack):
-                raise ValueError("ImageFetcher's stack is not related to a project, cannot use ROIMode.PROJECT")
+                raise ValueError(
+                    "ImageFetcher's stack is not related to a project, cannot use ROIMode.PROJECT"
+                )
             if self.stack.orientation != StackOrientation.XY:
-                warn("Stack orientation differs from project: returned array's orientation will reflect"
-                     "stack orientation, not project orientation")
-            roi_tgt = self.coord_trans.project_to_stack_array(roi_tgt, dims=self.target_orientation)
+                warn(
+                    "Stack orientation differs from project: returned array's orientation will reflect"
+                    "stack orientation, not project orientation"
+                )
+            roi_tgt = self.coord_trans.project_to_stack_array(
+                roi_tgt, dims=self.target_orientation
+            )
             roi_mode = ROIMode.STACK
 
         if roi_mode == ROIMode.STACK:
-            roi_tgt = self.coord_trans.stack_to_scaled_array(roi_tgt, zoom_level, dims=self.target_orientation)
+            roi_tgt = self.coord_trans.stack_to_scaled_array(
+                roi_tgt, zoom_level, dims=self.target_orientation
+            )
             roi_mode = ROIMode.SCALED
 
         if roi_mode == ROIMode.SCALED:
-            roi_tgt = np.array([np.floor(roi_tgt[0, :]), np.ceil(roi_tgt[1, :])], dtype=int)
+            roi_tgt = np.array(
+                [np.floor(roi_tgt[0, :]), np.ceil(roi_tgt[1, :])], dtype=int
+            )
         else:
-            raise ValueError('Mismatch between roi_mode and roi')  # shouldn't be possible
+            raise ValueError(
+                "Mismatch between roi_mode and roi"
+            )  # shouldn't be possible
 
         return roi_tgt
 
@@ -977,7 +712,9 @@ class ImageFetcher(object):
         normalise_by_tile_size : bool
             Whether to normalise the fetch time by the tile size used by this mirror (to get per-pixel response time)
         """
-        self.mirror = self.stack.get_fastest_mirror(self.timeout, reps, normalise_by_tile_size)
+        self.mirror = self.stack.get_fastest_mirror(
+            self.timeout, reps, normalise_by_tile_size
+        )
 
     @classmethod
     def from_stack_info(cls, stack_info, *args, **kwargs):
@@ -1010,7 +747,7 @@ class ImageFetcher(object):
         -------
         ImageFetcher
         """
-        stack_info = catmaid.get((catmaid.project_id, 'stack', stack_id, 'info'))
+        stack_info = catmaid.get((catmaid.project_id, "stack", stack_id, "info"))
         return cls.from_stack_info(stack_info, *args, **kwargs)
 
 
@@ -1025,16 +762,24 @@ def as_future_response(array):
 
 class ThreadedImageFetcher(ImageFetcher):
     def __init__(
-        self, stack, output_orientation=DEFAULT_3D_ORIENTATION, preferred_mirror=None, timeout=1,
-        cache_items=DEFAULT_CACHE_ITEMS, cache_bytes=DEFAULT_CACHE_BYTES,
-        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING, cval=0, auth=None, threads=THREADS
+        self,
+        stack,
+        output_orientation=DEFAULT_3D_ORIENTATION,
+        preferred_mirror=None,
+        timeout=1,
+        cache_items=DEFAULT_CACHE_ITEMS,
+        cache_bytes=DEFAULT_CACHE_BYTES,
+        broken_slice_handling=DEFAULT_BROKEN_SLICE_HANDLING,
+        cval=0,
+        auth=None,
+        threads=THREADS,
     ):
         """
         Note: for small numbers of tiles on fast internet connection, ImageFetcher may be faster
 
         Parameters
         ----------
-        stack : Stack
+        stack : catpy.stacks.Stack
         output_orientation : str or Orientation3D
             default Orientation3D.ZYX
         preferred_mirror : int or str or StackMirror or None
@@ -1053,9 +798,15 @@ class ThreadedImageFetcher(ImageFetcher):
             default 10
         """
         super(ThreadedImageFetcher, self).__init__(
-            stack, output_orientation, preferred_mirror, timeout,
-            cache_items, cache_bytes,
-            broken_slice_handling, cval, auth
+            stack,
+            output_orientation,
+            preferred_mirror,
+            timeout,
+            cache_items,
+            cache_bytes,
+            broken_slice_handling,
+            cval,
+            auth,
         )
         self._session = FuturesSession(session=self._session, max_workers=threads)
 
@@ -1077,7 +828,10 @@ class ThreadedImageFetcher(ImageFetcher):
             pass
 
         if tile_index.depth in self.stack.broken_slices:
-            if self.broken_slice_handling == BrokenSliceHandling.FILL and self.cval is not None:
+            if (
+                self.broken_slice_handling == BrokenSliceHandling.FILL
+                and self.cval is not None
+            ):
                 tile = np.empty((tile_index.width, tile_index.height))
                 tile.fill(self.cval)
                 return as_future_response(tile)
@@ -1089,8 +843,10 @@ class ThreadedImageFetcher(ImageFetcher):
         return self._fetch(tile_index)
 
     def _iter_tiles(self, tile_indices):
-        logger.info('Queuing requests, may take a few seconds...')
-        fetched_tiles = {self._get_tile(tile_index): tile_index for tile_index in tile_indices}
+        logger.info("Queuing requests, may take a few seconds...")
+        fetched_tiles = {
+            self._get_tile(tile_index): tile_index for tile_index in tile_indices
+        }
         for tile_future in as_completed(fetched_tiles):
             yield tile_future.result().array, fetched_tiles[tile_future]
 
@@ -1106,4 +862,6 @@ class ThreadedImageFetcher(ImageFetcher):
         Future of np.ndarray in source orientation
         """
         url = self.mirror.generate_url(tile_index)
-        return self._session.get(url, timeout=self.timeout, background_callback=response_to_array_callback)
+        return self._session.get(
+            url, timeout=self.timeout, background_callback=response_to_array_callback
+        )
