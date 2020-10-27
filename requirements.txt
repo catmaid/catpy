@@ -12,7 +12,7 @@ pandas==0.25.1
 black==19.3b0
 bump2version==0.5.11
 coverage==4.5.4
-cryptography==2.7
+cryptography==3.2
 flake8==3.7.8
 numpydoc==0.9.1
 Sphinx==2.2.0
